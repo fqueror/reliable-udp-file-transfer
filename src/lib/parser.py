@@ -1,3 +1,5 @@
+from .protocol import Protocol
+import pathlib
 import argparse
 
 
@@ -10,6 +12,10 @@ class SpacedHelpFormatter(argparse.HelpFormatter):
 
 
 def get_args(prog):
+    """
+    Returns a dictionary with the values of the arguments given to the program.
+    """
+
     parser = argparse.ArgumentParser(
         prog=prog, formatter_class=SpacedHelpFormatter)
 
@@ -22,26 +28,31 @@ def get_args(prog):
     if prog == "upload" or prog == "download":
         parser.add_argument("-H", "--host", metavar="ADDR",
                             action="store", help="server IP address")
-        parser.add_argument("-p", "--port", action="store", help="server port")
+        parser.add_argument("-p", "--port", action="store", type=int,
+                            help="server port")
 
         if prog == "upload":
             parser.add_argument("-s", "--src", metavar="FILEPATH",
-                                action="store", help="source file path")
+                                action="store", type=pathlib.Path,
+                                help="source file path")
         elif prog == "download":
             parser.add_argument("-d", "--dst", metavar="FILEPATH",
-                                action="store", help="destination file path")
+                                action="store", type=pathlib.Path,
+                                help="destination file path")
 
         parser.add_argument("-n", "--name",  metavar="FILENAME",
                             action="store", help="file name")
         parser.add_argument("-r", "--protocol", metavar="PROTOCOL",
-                            action="store", help="error recovery protocol")
+                            action="store", type=Protocol.from_str,
+                            help="error recovery protocol")
 
     elif prog == "start-server":
         parser.add_argument("-H", "--host", metavar="ADDR",
                             action="store", help="service IP address")
-        parser.add_argument("-p", "--port", action="store",
+        parser.add_argument("-p", "--port", action="store", type=int,
                             help="service port")
         parser.add_argument("-s", "--storage", metavar="DIRPATH",
-                            action="store", help="storage directory path")
+                            action="store", type=pathlib.Path,
+                            help="storage directory path")
 
-    return parser.parse_args()
+    return vars(parser.parse_args())
