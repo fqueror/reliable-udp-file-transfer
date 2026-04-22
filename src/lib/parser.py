@@ -12,10 +12,6 @@ class SpacedHelpFormatter(argparse.HelpFormatter):
 
 
 def get_args(prog):
-    """
-    Returns a dictionary with the values of the arguments given to the program.
-    """
-
     parser = argparse.ArgumentParser(
         prog=prog, formatter_class=SpacedHelpFormatter)
 
@@ -55,4 +51,4 @@ def get_args(prog):
                             action="store", type=pathlib.Path,
                             help="storage directory path")
 
-    return vars(parser.parse_args())
+    return parser.parse_args()
