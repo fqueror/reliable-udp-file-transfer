@@ -3,12 +3,8 @@ class Protocol:
 
     @classmethod
     def from_str(cls, str):
-        """
-        The comparison is case-insensitive.
-        """
-
         for subclass in cls.__subclasses__():
-            if str.lower() == subclass.ID:
+            if str == subclass.ID:
                 return subclass()
 
 
