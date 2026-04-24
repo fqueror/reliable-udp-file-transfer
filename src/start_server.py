@@ -6,7 +6,7 @@ if __name__ == "__main__":
     args = get_args("start-server")
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.bind(('', 12000))
+    server_socket.bind((args.host, args.port))
 
     # Change the file's extension to match the one being received:
     file = open("archivo_recibido.mp4", "wb")

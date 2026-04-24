@@ -7,6 +7,7 @@ MAX_PAYLOAD_SIZE = 1460
 
 if __name__ == "__main__":
     args = get_args("upload")
+    server_addr = (args.host, args.port)
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -14,8 +15,8 @@ if __name__ == "__main__":
         # We must separate the file in chunks because `socket.sendto` can only
         # send certain amount of bytes.
         while (chunk := file.read(MAX_PAYLOAD_SIZE)):
-            client_socket.sendto(chunk, ('127.0.0.1', 12000))
+            client_socket.sendto(chunk, server_addr)
 
-    client_socket.sendto(b"__END__", ('127.0.0.1', 12000))
+    client_socket.sendto(b"__END__", server_addr)
 
     client_socket.close()
