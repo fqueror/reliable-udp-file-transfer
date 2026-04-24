@@ -1,5 +1,6 @@
 from lib.parser import get_args
 import socket
+import pickle
 
 # We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
 # as to avoid fragmentation in lower Internet layers.
@@ -17,10 +18,11 @@ if __name__ == "__main__":
     while True:
         bytes_received = bytearray(MTU)
         q_bytes_received = server_socket.recv_into(bytes_received)
+        segment = pickle.loads(bytes_received[:q_bytes_received])
 
-        if bytes_received[:q_bytes_received] == b"__END__":
+        if segment.flags["FIN"]:
             break
-        file.write(bytes_received[:q_bytes_received])
+        file.write(segment.payload)
 
     server_socket.close()
     file.close()
