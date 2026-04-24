@@ -1,0 +1,6 @@
+Para correr el servidor:
+Ej: python3 start_server.py -H 0.0.0.0 -p 12000 -s cloud
+
+Upload:
+Ej: python3 upload.py -H 127.0.0.1 -p 12000 -s "/home/dondi/Videos/Screencasts/2026-04-12 19-00-59.mp4"
+
