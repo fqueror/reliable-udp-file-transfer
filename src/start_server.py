@@ -1,6 +1,9 @@
 from lib.parser import get_args
 import socket
 
+# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
+# as to avoid fragmentation in lower Internet layers.
+MTU = 1500
 
 if __name__ == "__main__":
     args = get_args("start-server")
@@ -12,7 +15,7 @@ if __name__ == "__main__":
     file = open("archivo_recibido.mp4", "wb")
 
     while True:
-        bytes_received = bytearray(4096)  # TODO Why 4096?
+        bytes_received = bytearray(MTU)
         q_bytes_received = server_socket.recv_into(bytes_received)
 
         if bytes_received[:q_bytes_received] == b"__END__":
