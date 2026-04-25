@@ -13,16 +13,15 @@ MAX_PAYLOAD_SIZE = 1400
 
 if __name__ == "__main__":
     args = get_args("upload")
-    server_addr = (args.host, args.port)
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client_socket.connect((args.host, args.port))
 
     with open(args.src, "rb") as file:
         # We must separate the file in chunks because `socket.sendto` can only
         # send certain amount of bytes.
         while (chunk := file.read(MAX_PAYLOAD_SIZE)):
-            client_socket.sendto(pickle.dumps(
-                Segment(payload=chunk)), server_addr)
+            client_socket.send(pickle.dumps(Segment(payload=chunk)))
 
-    client_socket.sendto(pickle.dumps(Segment(fin_flag=True)), server_addr)
+    client_socket.send(pickle.dumps(Segment(fin_flag=True)))
     client_socket.close()
