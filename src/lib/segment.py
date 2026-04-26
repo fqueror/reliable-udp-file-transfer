@@ -15,6 +15,8 @@ class Segment:
     """
 
     def __init__(self, ack_flag: bool = False, fin_flag: bool = False,
+                 operation: str = "",
                  payload: bytes = b""):
         self.flags = {"ACK": ack_flag, "FIN": fin_flag}
         self.payload = payload
+        self.operation = operation
