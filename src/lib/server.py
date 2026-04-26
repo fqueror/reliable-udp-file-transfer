@@ -2,6 +2,9 @@ import socket
 import pickle
 import threading
 import queue
+import os
+
+from lib.segment import Segment
 
 # We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
 # as to avoid fragmentation in lower Internet layers.
@@ -12,32 +15,40 @@ class Server:
         self.host = "127.0.0.1"
         self.port = 12000
         self.socket = None
-        self.storage = "./server_storage/"
+        self.storage = ""
         # Lista de clientes activos. Cada cliente tiene su cola
         self.active_transfers = {}
+        self.file = None
 
     def config_server(self, args):
         self.host = args.host
         self.port = args.port
+        self.storage = args.storage
+        os.makedirs(self.storage, exist_ok=True)
+        # Change the file's extension to match the one being received:
+        file = open(args.storage + "/archivo_recibido.mp4", "wb")
+        self.file = file
 
 
-    def handle_client(self, client_addr, segment, client_queue):
+    def handle_client(self, client_addr, client_queue):
         print(f"[NUEVO HILO] Atendiendo a {client_addr}")
-
         #if paquete es upload{}
-        filepath = "" #Filepath que da el segmento
-        with open(filepath, "wb") as file:
-            file.write(segment.payload)
 
-            while True:
-                segment = client_queue.get()
-                if segment.flags["FIN"]:
-                    print(f"[FINALIZADO] Transferencia completa para {client_addr}")
-                    break
+        self.socket.sendto(pickle.dumps(Segment(ack_flag=True)), client_addr)
+        ack = pickle.dumps(Segment(ack_flag=True))
 
-                file.write(segment.payload)
+        while True:
+            segment = client_queue.get()
 
-        del self.active_transfers[client_addr]
+            if segment.flags["FIN"]:
+                print(f"[FINALIZADO] Transferencia completa para {client_addr}")
+                del self.active_transfers[client_addr]
+
+            self.file.write(segment.payload)
+
+            self.socket.sendto(ack, client_addr)
+
+
 
         #elif paquete es download{}
 
@@ -54,17 +65,11 @@ class Server:
             if addr not in self.active_transfers:
                 client_queue = queue.Queue()
                 self.active_transfers[addr] = client_queue
-
-                thread = threading.Thread(target=self.handle_client, args=(addr, segment, client_queue))
+                client_queue.put(segment)
+                thread = threading.Thread(target=self.handle_client, args=(addr, client_queue))
                 thread.start()
 
             else:
                 self.active_transfers[addr].put(segment)
 
 
-            if segment.flags["FIN"]:
-                break
-            file.write(segment.payload)
-
-        self.socket.close()
-        file.close()
