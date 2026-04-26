@@ -27,11 +27,11 @@ class StopAndWait(Protocol):
     def __repr__(self):
         return "Stop And Wait"
 
-    def send_file(self, origin_socket: socket.socket, file):
-        while (chunk := file.read(MAX_PAYLOAD_SIZE)):
+    def send_file(self, origin_socket: socket.socket, file, filename):
+        while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
                 origin_socket.send(pickle.dumps(
-                    Segment(payload=chunk, operation=OP_UPLOAD)))
+                    Segment(payload=chunk, operation=OP_UPLOAD, filename=filename)))
 
                 bytes_received = bytearray(MTU * 2)
                 q_bytes_received = origin_socket.recv_into(bytes_received)
@@ -41,8 +41,8 @@ class StopAndWait(Protocol):
 
         origin_socket.send(pickle.dumps(Segment(fin_flag=True)))
 
-    def receive_file(self, client_socket: socket.socket, file):
-        client_socket.send(pickle.dumps(Segment(operation=OP_DOWNLOAD)))
+    def receive_file(self, client_socket: socket.socket, file, filename):
+        client_socket.send(pickle.dumps(Segment(operation=OP_DOWNLOAD, filename=filename)))
 
         while True:
             bytes_received = bytearray(MTU * 2)  # Pickle necesita > 1500

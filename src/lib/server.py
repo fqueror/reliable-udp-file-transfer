@@ -9,6 +9,9 @@ from lib.segment import Segment
 # We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
 # as to avoid fragmentation in lower Internet layers.
 MTU = 1500
+OP_UPLOAD = "UPLOAD"
+OP_DOWNLOAD = "DOWNLOAD"
+MAX_PAYLOAD_SIZE = 1400
 
 class Server:
     def __init__(self):
@@ -18,40 +21,69 @@ class Server:
         self.storage = ""
         # Lista de clientes activos. Cada cliente tiene su cola
         self.active_transfers = {}
-        self.file = None
 
     def config_server(self, args):
         self.host = args.host
         self.port = args.port
         self.storage = args.storage
         os.makedirs(self.storage, exist_ok=True)
-        # Change the file's extension to match the one being received:
-        file = open(args.storage + "/archivo_recibido.mp4", "wb")
-        self.file = file
 
 
-    def handle_client(self, client_addr, client_queue):
-        print(f"[NUEVO HILO] Atendiendo a {client_addr}")
-        #if paquete es upload{}
+    def upload_file(self, client_addr, client_queue, first_segment):
+        filename = first_segment.filename
+        filepath = os.path.join(self.storage, str(filename))
+        file = open(filepath, "wb")
 
-        self.socket.sendto(pickle.dumps(Segment(ack_flag=True)), client_addr)
+        file.write(first_segment.payload)
         ack = pickle.dumps(Segment(ack_flag=True))
+        self.socket.sendto(ack, client_addr)
 
         while True:
             segment = client_queue.get()
 
             if segment.flags["FIN"]:
-                print(f"[FINALIZADO] Transferencia completa para {client_addr}")
                 del self.active_transfers[client_addr]
                 break
 
-            self.file.write(segment.payload)
+            file.write(segment.payload)
 
             self.socket.sendto(ack, client_addr)
 
+        print(f"[FIN] {filename} recibido")
+        file.close()
 
+    def download_file(self, client_addr, client_queue, first_segment):
+        filename = first_segment.filename
+        filepath = os.path.join(self.storage, str(filename))
+        file = open(filepath, "rb")
 
-        #elif paquete es download{}
+        ack = pickle.dumps(Segment(ack_flag=True))
+
+        while chunk := file.read(MAX_PAYLOAD_SIZE):
+            while True:
+                self.socket.sendto(pickle.dumps(
+                    Segment(payload=chunk)), client_addr)
+
+                self.socket.sendto(ack, client_addr)
+                reply = client_queue.get()
+
+                if reply.flags["ACK"] is True:
+                    break
+
+        self.socket.sendto(pickle.dumps(Segment(fin_flag=True)), client_addr)
+        file.close()
+        print(f"[FIN] {filename} enviado")
+
+    def handle_client(self, client_addr, client_queue):
+        print(f"[NUEVO HILO] Atendiendo a {client_addr}")
+        segment = client_queue.get()
+
+        if segment.operation == OP_UPLOAD:
+            self.upload_file(client_addr, client_queue, segment)
+
+        elif segment.operation == OP_DOWNLOAD:
+            self.download_file(client_addr, client_queue, segment)
+
 
 
     def start_server(self):
@@ -61,7 +93,7 @@ class Server:
 
         try:
             while True:
-                data, addr = self.socket.recvfrom(MTU)
+                data, addr = self.socket.recvfrom(MTU*2)
                 segment = pickle.loads(data)
 
                 if addr not in self.active_transfers:
