@@ -51,14 +51,11 @@ class Server:
         filepath = os.path.join(self.storage, str(filename))
         file = open(filepath, "rb")
 
-        ack = pickle.dumps(Segment(ack_flag=True))
-
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
                 self.socket.sendto(pickle.dumps(
                     Segment(payload=chunk)), client_addr)
 
-                self.socket.sendto(ack, client_addr)
                 reply = client_queue.get()
 
                 if reply.flags["ACK"] is True:
