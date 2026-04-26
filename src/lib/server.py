@@ -43,6 +43,7 @@ class Server:
             if segment.flags["FIN"]:
                 print(f"[FINALIZADO] Transferencia completa para {client_addr}")
                 del self.active_transfers[client_addr]
+                break
 
             self.file.write(segment.payload)
 
@@ -58,18 +59,24 @@ class Server:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.host, self.port))
 
-        while True:
-            data, addr = self.socket.recvfrom(MTU)
-            segment = pickle.loads(data)
+        try:
+            while True:
+                data, addr = self.socket.recvfrom(MTU)
+                segment = pickle.loads(data)
 
-            if addr not in self.active_transfers:
-                client_queue = queue.Queue()
-                self.active_transfers[addr] = client_queue
-                client_queue.put(segment)
-                thread = threading.Thread(target=self.handle_client, args=(addr, client_queue))
-                thread.start()
+                if addr not in self.active_transfers:
+                    client_queue = queue.Queue()
+                    self.active_transfers[addr] = client_queue
+                    client_queue.put(segment)
+                    thread = threading.Thread(target=self.handle_client, args=(addr, client_queue))
+                    thread.daemon = True
+                    thread.start()
 
-            else:
-                self.active_transfers[addr].put(segment)
+                else:
+                    self.active_transfers[addr].put(segment)
+        except KeyboardInterrupt:
+            self.socket.close()
+            print("\n[APAGANDO] Cerrando el servidor de forma segura...")
+
 
 
