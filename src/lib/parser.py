@@ -48,7 +48,6 @@ def get_args(prog):
         parser.add_argument("-p", "--port", action="store", type=int,
                             help="service port")
         parser.add_argument("-s", "--storage", metavar="DIRPATH",
-                            action="store", type=pathlib.Path,
-                            help="storage directory path")
+                            action="store", help="storage directory path")
 
     return parser.parse_args()

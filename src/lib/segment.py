@@ -1,3 +1,8 @@
+# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
+# as to avoid fragmentation in lower Internet layers.
+MTU = 1500
+
+
 class Segment:
     """
     We use a Python class to construct the segment because it is easier to
@@ -9,6 +14,7 @@ class Segment:
     header is larger than 40 bytes.
     """
 
-    def __init__(self, fin_flag: bool = False, payload: bytes = b""):
-        self.flags = {"FIN": fin_flag}
+    def __init__(self, ack_flag: bool = False, fin_flag: bool = False,
+                 payload: bytes = b""):
+        self.flags = {"ACK": ack_flag, "FIN": fin_flag}
         self.payload = payload
