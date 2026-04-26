@@ -5,13 +5,8 @@ import queue
 import os
 
 from lib.segment import Segment
+from lib.constants import MTU, MAX_PAYLOAD_SIZE, OP_DOWNLOAD, OP_UPLOAD
 
-# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
-# as to avoid fragmentation in lower Internet layers.
-MTU = 1500
-OP_UPLOAD = "UPLOAD"
-OP_DOWNLOAD = "DOWNLOAD"
-MAX_PAYLOAD_SIZE = 1400
 
 class Server:
     def __init__(self):
@@ -27,7 +22,6 @@ class Server:
         self.port = args.port
         self.storage = args.storage
         os.makedirs(self.storage, exist_ok=True)
-
 
     def upload_file(self, client_addr, client_queue, first_segment):
         filename = first_segment.filename
@@ -84,8 +78,6 @@ class Server:
         elif segment.operation == OP_DOWNLOAD:
             self.download_file(client_addr, client_queue, segment)
 
-
-
     def start_server(self):
         print(f"ARRANCO EL SERVIDOR en {self.host}:{self.port}")
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -100,7 +92,8 @@ class Server:
                     client_queue = queue.Queue()
                     self.active_transfers[addr] = client_queue
                     client_queue.put(segment)
-                    thread = threading.Thread(target=self.handle_client, args=(addr, client_queue))
+                    thread = threading.Thread(
+                        target=self.handle_client, args=(addr, client_queue))
                     thread.daemon = True
                     thread.start()
 
@@ -109,6 +102,3 @@ class Server:
         except KeyboardInterrupt:
             self.socket.close()
             print("\n[APAGANDO] Cerrando el servidor de forma segura...")
-
-
-

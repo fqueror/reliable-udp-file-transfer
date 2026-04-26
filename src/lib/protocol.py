@@ -1,6 +1,7 @@
-from lib.segment import Segment, MTU
+from lib.segment import Segment
 import socket
 import pickle
+from lib.constants import MTU
 
 # An MSS is the Maximum Segment Size, though it defines the maximum payload
 # size. According to Kurose's book, 1460 bytes is its typical value.
@@ -8,9 +9,8 @@ import pickle
 # TODO must use an MSS lower than the typical. However, we should use the
 # TODO highest possible one within that range. For now, 1400 does the
 # TODO job, but we must check if it is the best possible value.
-MAX_PAYLOAD_SIZE = 1400
-OP_DOWNLOAD = "DOWNLOAD"
-OP_UPLOAD = "UPLOAD"
+
+from lib.constants import MAX_PAYLOAD_SIZE, OP_DOWNLOAD, OP_UPLOAD
 
 
 class Protocol:
@@ -42,7 +42,8 @@ class StopAndWait(Protocol):
         origin_socket.send(pickle.dumps(Segment(fin_flag=True)))
 
     def receive_file(self, client_socket: socket.socket, file, filename):
-        client_socket.send(pickle.dumps(Segment(operation=OP_DOWNLOAD, filename=filename)))
+        client_socket.send(pickle.dumps(
+            Segment(operation=OP_DOWNLOAD, filename=filename)))
 
         while True:
             bytes_received = bytearray(MTU * 2)  # Pickle necesita > 1500
