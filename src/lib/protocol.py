@@ -30,13 +30,11 @@ class StopAndWait(Protocol):
 
     # Called by the server to receive a file from a client.
     def upload_file(
-        self, server_socket, client_addr, client_queue, first_segment, storage
+        self, server_socket, client_addr, client_queue, storage, filename
     ):
-        filename = first_segment.filename
         filepath = os.path.join(storage, str(filename))
         file = open(filepath, "wb")
 
-        file.write(first_segment.payload)
         ack = pickle.dumps(Segment(ack_flag=True))
         server_socket.sendto(ack, client_addr)
 
@@ -54,9 +52,8 @@ class StopAndWait(Protocol):
 
     # Called by the server to send a file to a client.
     def download_file(
-        self, server_socket, client_addr, client_queue, first_segment, storage
+        self, server_socket, client_addr, client_queue, storage, filename
     ):
-        filename = first_segment.filename
         filepath = os.path.join(storage, str(filename))
         file = open(filepath, "rb")
 
@@ -79,14 +76,22 @@ class StopAndWait(Protocol):
 
     # Called by the client to send a file to the server.
     def send_file(self, origin_socket: socket.socket, file, filename):
+        metadata = Metadata(filename=filename, protocol=self.ID, operation=OP_UPLOAD)
+        first_segment = Segment(payload=pickle.dumps(metadata))
+
+        while True:
+            origin_socket.send(pickle.dumps(first_segment))
+
+            bytes_received = bytearray(MTU * 2)
+            q_bytes_received = origin_socket.recv_into(bytes_received)
+            reply = pickle.loads(bytes_received[:q_bytes_received])
+            if reply.flags["ACK"] is True:
+                break
+
         chunk = file.read(MAX_PAYLOAD_SIZE)
-       # metadata = Metadata(filename=filename, protocol=self.ID, operation=OP_UPLOAD)
 
         segment = Segment(
-            payload=chunk,
-            operation=OP_UPLOAD,
-            filename=filename,
-            protocol=self.ID)
+            payload=chunk)
 
         while chunk:
             while True:
@@ -101,19 +106,17 @@ class StopAndWait(Protocol):
             chunk = file.read(MAX_PAYLOAD_SIZE)
             segment = Segment(
                 payload=chunk,
-                operation=OP_UPLOAD,
-                filename=filename)
+                )
 
         origin_socket.send(pickle.dumps(Segment(fin_flag=True)))
 
     # Called by the client to download a file from the server.
     def receive_file(self, client_socket: socket.socket, file, filename):
+        metadata = Metadata(filename=filename, protocol=self.ID, operation=OP_DOWNLOAD)
         client_socket.send(
             pickle.dumps(
                 Segment(
-                    operation=OP_DOWNLOAD,
-                    filename=filename,
-                    protocol=self.ID)))
+                    payload=pickle.dumps(metadata))))
 
         while True:
             bytes_received = bytearray(MTU * 2)  # Pickle necesita > 1500

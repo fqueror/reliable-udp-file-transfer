@@ -25,16 +25,18 @@ class Server:
 
     def handle_client(self, client_addr, client_queue):
         print(f"[NUEVO HILO] Atendiendo a {client_addr}")
-        segment = client_queue.get()
-        protocol = Protocol.from_str(segment.protocol)
+        first_segment = client_queue.get()
+        metadata = pickle.loads(first_segment.payload)
+        protocol = Protocol.from_str(metadata.protocol)
+        filename = metadata.filename
 
-        if segment.operation == OP_UPLOAD:
+        if metadata.operation == OP_UPLOAD:
             protocol.upload_file(
-                self.socket, client_addr, client_queue, segment, self.storage
+                self.socket, client_addr, client_queue, self.storage, filename
             )
-        elif segment.operation == OP_DOWNLOAD:
+        elif metadata.operation == OP_DOWNLOAD:
             protocol.download_file(
-                self.socket, client_addr, client_queue, segment, self.storage
+                self.socket, client_addr, client_queue, self.storage, filename
             )
 
         del self.active_transfers[client_addr]

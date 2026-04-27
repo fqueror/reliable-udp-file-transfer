@@ -13,13 +13,8 @@ class Segment:
         self,
         ack_flag: bool = False,
         fin_flag: bool = False,
-        operation: str = None,
         payload: bytes = b"",
-        filename: str = None,
-        protocol: str = None,
+
     ):
         self.flags = {"ACK": ack_flag, "FIN": fin_flag}
         self.payload = payload
-        self.operation = operation
-        self.filename = filename
-        self.protocol = protocol
