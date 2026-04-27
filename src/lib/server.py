@@ -4,8 +4,8 @@ import threading
 import queue
 import os
 
-from lib.segment import Segment
-from lib.constants import MTU, MAX_PAYLOAD_SIZE, OP_DOWNLOAD, OP_UPLOAD
+from lib.protocol import Protocol
+from lib.constants import MTU, OP_UPLOAD, OP_DOWNLOAD
 
 
 class Server:
@@ -23,57 +23,21 @@ class Server:
         self.storage = args.storage
         os.makedirs(self.storage, exist_ok=True)
 
-    def upload_file(self, client_addr, client_queue, first_segment):
-        filename = first_segment.filename
-        filepath = os.path.join(self.storage, str(filename))
-        file = open(filepath, "wb")
-
-        file.write(first_segment.payload)
-        ack = pickle.dumps(Segment(ack_flag=True))
-        self.socket.sendto(ack, client_addr)
-
-        while True:
-            segment = client_queue.get()
-
-            if segment.flags["FIN"]:
-                del self.active_transfers[client_addr]
-                break
-
-            file.write(segment.payload)
-
-            self.socket.sendto(ack, client_addr)
-
-        print(f"[FIN] {filename} recibido")
-        file.close()
-
-    def download_file(self, client_addr, client_queue, first_segment):
-        filename = first_segment.filename
-        filepath = os.path.join(self.storage, str(filename))
-        file = open(filepath, "rb")
-
-        while chunk := file.read(MAX_PAYLOAD_SIZE):
-            while True:
-                self.socket.sendto(pickle.dumps(
-                    Segment(payload=chunk)), client_addr)
-
-                reply = client_queue.get()
-
-                if reply.flags["ACK"] is True:
-                    break
-
-        self.socket.sendto(pickle.dumps(Segment(fin_flag=True)), client_addr)
-        file.close()
-        print(f"[FIN] {filename} enviado")
-
     def handle_client(self, client_addr, client_queue):
         print(f"[NUEVO HILO] Atendiendo a {client_addr}")
         segment = client_queue.get()
+        protocol = Protocol.from_str(segment.protocol)
 
         if segment.operation == OP_UPLOAD:
-            self.upload_file(client_addr, client_queue, segment)
-
+            protocol.upload_file(
+                self.socket, client_addr, client_queue, segment, self.storage
+            )
         elif segment.operation == OP_DOWNLOAD:
-            self.download_file(client_addr, client_queue, segment)
+            protocol.download_file(
+                self.socket, client_addr, client_queue, segment, self.storage
+            )
+
+        del self.active_transfers[client_addr]
 
     def start_server(self):
         print(f"ARRANCO EL SERVIDOR en {self.host}:{self.port}")
@@ -82,7 +46,7 @@ class Server:
 
         try:
             while True:
-                data, addr = self.socket.recvfrom(MTU*2)
+                data, addr = self.socket.recvfrom(MTU * 2)
                 segment = pickle.loads(data)
 
                 if addr not in self.active_transfers:
@@ -90,7 +54,8 @@ class Server:
                     self.active_transfers[addr] = client_queue
                     client_queue.put(segment)
                     thread = threading.Thread(
-                        target=self.handle_client, args=(addr, client_queue))
+                        target=self.handle_client, args=(addr, client_queue)
+                    )
                     thread.daemon = True
                     thread.start()
 
