@@ -1,3 +1,5 @@
+from lib.metadata import Metadata
+
 from lib.segment import Segment
 import socket
 import pickle
@@ -60,7 +62,11 @@ class StopAndWait(Protocol):
 
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
-                server_socket.sendto(pickle.dumps(Segment(payload=chunk)), client_addr)
+                server_socket.sendto(
+                    pickle.dumps(
+                        Segment(
+                            payload=chunk)),
+                    client_addr)
 
                 reply = client_queue.get()
 
@@ -74,9 +80,13 @@ class StopAndWait(Protocol):
     # Called by the client to send a file to the server.
     def send_file(self, origin_socket: socket.socket, file, filename):
         chunk = file.read(MAX_PAYLOAD_SIZE)
+       # metadata = Metadata(filename=filename, protocol=self.ID, operation=OP_UPLOAD)
+
         segment = Segment(
-            payload=chunk, operation=OP_UPLOAD, filename=filename, protocol=self.ID
-        )
+            payload=chunk,
+            operation=OP_UPLOAD,
+            filename=filename,
+            protocol=self.ID)
 
         while chunk:
             while True:
@@ -89,7 +99,10 @@ class StopAndWait(Protocol):
                     break
 
             chunk = file.read(MAX_PAYLOAD_SIZE)
-            segment = Segment(payload=chunk, operation=OP_UPLOAD, filename=filename)
+            segment = Segment(
+                payload=chunk,
+                operation=OP_UPLOAD,
+                filename=filename)
 
         origin_socket.send(pickle.dumps(Segment(fin_flag=True)))
 
@@ -97,9 +110,10 @@ class StopAndWait(Protocol):
     def receive_file(self, client_socket: socket.socket, file, filename):
         client_socket.send(
             pickle.dumps(
-                Segment(operation=OP_DOWNLOAD, filename=filename, protocol=self.ID)
-            )
-        )
+                Segment(
+                    operation=OP_DOWNLOAD,
+                    filename=filename,
+                    protocol=self.ID)))
 
         while True:
             bytes_received = bytearray(MTU * 2)  # Pickle necesita > 1500

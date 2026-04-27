@@ -6,9 +6,10 @@ if __name__ == "__main__":
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client_socket.connect((args.host, args.port))
-    filename = args.src
+    filepath = args.src
+    filename = args.name
 
-    with open(filename, "rb") as file:
+    with open(filepath, "rb") as file:
         args.protocol.send_file(client_socket, file, filename)
 
     client_socket.close()

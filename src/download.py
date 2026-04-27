@@ -1,7 +1,6 @@
 from lib.parser import get_args
 import socket
 
-
 if __name__ == "__main__":
     args = get_args("download")
 
