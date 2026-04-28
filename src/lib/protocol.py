@@ -76,13 +76,14 @@ class StopAndWait(Protocol):
 
     # Called by the client to send a file to the server.
     def send_file(self, origin_socket: socket.socket, file, filename):
-        metadata = Metadata(filename=filename, protocol=self.ID, operation=OP_UPLOAD)
+        metadata = Metadata(filename=filename,
+                            protocol=self.ID, operation=OP_UPLOAD)
         first_segment = Segment(payload=pickle.dumps(metadata))
 
         while True:
             origin_socket.send(pickle.dumps(first_segment))
 
-            bytes_received = bytearray(MTU * 2)
+            bytes_received = bytearray(MTU)
             q_bytes_received = origin_socket.recv_into(bytes_received)
             reply = pickle.loads(bytes_received[:q_bytes_received])
             if reply.flags["ACK"] is True:
@@ -97,7 +98,7 @@ class StopAndWait(Protocol):
             while True:
                 origin_socket.send(pickle.dumps(segment))
 
-                bytes_received = bytearray(MTU * 2)
+                bytes_received = bytearray(MTU)
                 q_bytes_received = origin_socket.recv_into(bytes_received)
                 reply = pickle.loads(bytes_received[:q_bytes_received])
                 if reply.flags["ACK"] is True:
@@ -106,20 +107,21 @@ class StopAndWait(Protocol):
             chunk = file.read(MAX_PAYLOAD_SIZE)
             segment = Segment(
                 payload=chunk,
-                )
+            )
 
         origin_socket.send(pickle.dumps(Segment(fin_flag=True)))
 
     # Called by the client to download a file from the server.
     def receive_file(self, client_socket: socket.socket, file, filename):
-        metadata = Metadata(filename=filename, protocol=self.ID, operation=OP_DOWNLOAD)
+        metadata = Metadata(filename=filename,
+                            protocol=self.ID, operation=OP_DOWNLOAD)
         client_socket.send(
             pickle.dumps(
                 Segment(
                     payload=pickle.dumps(metadata))))
 
         while True:
-            bytes_received = bytearray(MTU * 2)  # Pickle necesita > 1500
+            bytes_received = bytearray(MTU)
             q_bytes_received = client_socket.recv_into(bytes_received)
             reply = pickle.loads(bytes_received[:q_bytes_received])
 

@@ -48,7 +48,7 @@ class Server:
 
         try:
             while True:
-                data, addr = self.socket.recvfrom(MTU * 2)
+                data, addr = self.socket.recvfrom(MTU)
                 segment = pickle.loads(data)
 
                 if addr not in self.active_transfers:
