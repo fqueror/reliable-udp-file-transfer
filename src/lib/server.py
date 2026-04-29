@@ -24,11 +24,15 @@ class Server:
         protocol = Protocol.from_str(metadata.protocol)
 
         if metadata.operation == OP_UPLOAD:
-            protocol.upload_file(self.storage, metadata.filename, self.socket,
-                                 client_addr, client_queue)
+            with open(os.path.join(self.storage, str(metadata.filename)),
+                      "wb") as file:
+                protocol.upload_file(file, self.socket, client_addr,
+                                     client_queue)
         elif metadata.operation == OP_DOWNLOAD:
-            protocol.download_file(self.socket, client_addr, client_queue,
-                                   self.storage, metadata.filename)
+            with open(os.path.join(self.storage, str(metadata.filename)),
+                      "rb") as file:
+                protocol.download_file(self.socket, client_addr, client_queue,
+                                       file)
 
         del self.clients[client_addr]
 

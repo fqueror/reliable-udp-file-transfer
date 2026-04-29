@@ -3,7 +3,6 @@ from lib.metadata import Metadata
 from lib.segment import Segment
 import socket
 import pickle
-import os
 
 # An MSS is the Maximum Segment Size, though it defines the maximum payload
 # size. According to Kurose's book, 1460 bytes is its typical value.
@@ -29,41 +28,31 @@ class StopAndWait(Protocol):
         return "Stop And Wait"
 
     # Called by the server to receive a file from a client.
-    def upload_file(self, storage, filename, server_socket, client_addr,
-                    client_queue):
-        with open(os.path.join(storage, str(filename)), "wb") as file:
+    def upload_file(self, file, server_socket, client_addr, client_queue):
+        server_socket.sendto(pickle.dumps(Segment(ack_flag=True)), client_addr)
+
+        while True:
+            segment = client_queue.get()
+
+            if segment.flags["FIN"]:
+                break
+
+            file.write(segment.payload)
             server_socket.sendto(pickle.dumps(Segment(ack_flag=True)),
                                  client_addr)
 
+    # Called by the server to send a file to a client.
+    def download_file(self, server_socket, client_addr, client_queue, file):
+        while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
-                segment = client_queue.get()
-
-                if segment.flags["FIN"]:
-                    break
-
-                file.write(segment.payload)
-                server_socket.sendto(pickle.dumps(Segment(ack_flag=True)),
+                server_socket.sendto(pickle.dumps(Segment(payload=chunk)),
                                      client_addr)
 
-            print(f"[FIN] {filename} recibido")
+                if client_queue.get().flags["ACK"] is True:
+                    break
 
-    # Called by the server to send a file to a client.
-    def download_file(
-        self, server_socket, client_addr, client_queue, storage, filename
-    ):
-        with open(os.path.join(storage, str(filename)), "rb") as file:
-            while chunk := file.read(MAX_PAYLOAD_SIZE):
-                while True:
-                    server_socket.sendto(pickle.dumps(Segment(payload=chunk)),
-                                         client_addr)
-
-                    if client_queue.get().flags["ACK"] is True:
-                        break
-
-            server_socket.sendto(pickle.dumps(
-                Segment(fin_flag=True)), client_addr)
-
-        print(f"[FIN] {filename} enviado")
+        server_socket.sendto(pickle.dumps(
+            Segment(fin_flag=True)), client_addr)
 
     # Called by the client to send a file to the server.
     def send_file(self, origin_socket: socket.socket, file, filename):
