@@ -8,6 +8,6 @@ if __name__ == "__main__":
     client_socket.connect((args.host, args.port))
 
     with open(args.src, "rb") as file:
-        args.protocol.send_file(client_socket, file, args.name)
+        args.protocol.client_send(client_socket, file, args.name)
 
     client_socket.close()

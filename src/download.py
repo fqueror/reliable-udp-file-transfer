@@ -8,6 +8,6 @@ if __name__ == "__main__":
     client_socket.connect((args.host, args.port))
 
     with open(args.dst / args.name, "wb") as file:
-        args.protocol.receive_file(client_socket, file, args.name)
+        args.protocol.client_recv(client_socket, file, args.name)
 
     client_socket.close()
