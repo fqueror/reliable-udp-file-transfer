@@ -1,5 +1,5 @@
-from lib.constants import MTU, OP_UPLOAD, OP_DOWNLOAD
-from lib.protocol import Protocol
+from lib.metadata import OP_UPLOAD, OP_DOWNLOAD
+from lib.protocol import Protocol, MTU
 import threading
 import socket
 import pickle

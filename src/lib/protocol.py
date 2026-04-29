@@ -1,9 +1,12 @@
-from lib.constants import MTU, OP_DOWNLOAD, OP_UPLOAD
-from lib.metadata import Metadata
+from lib.metadata import Metadata, OP_UPLOAD, OP_DOWNLOAD
 from lib.segment import Segment
 import socket
 import pickle
 
+
+# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
+# as to avoid fragmentation in lower Internet layers.
+MTU = 1500
 # An MSS is the Maximum Segment Size, though it defines the maximum payload
 # size. According to Kurose's book, 1460 bytes is its typical value.
 # TODO Since we use `Segment`, our header is larger than 40 bytes, and we then
