@@ -24,7 +24,7 @@ class Protocol:
             if str == subclass.ID:
                 return subclass()
 
-    def recv(self, dest: socket.socket) -> Segment:
+    def _recv_segment(self, dest: socket.socket) -> Segment:
         """
         If `dest` is already connected to an `origin` socket with [`connect`](
         https://docs.python.org/3/library/socket.html#socket.socket.connect),
@@ -42,29 +42,29 @@ class StopAndWait(Protocol):
     def __repr__(self):
         return "Stop And Wait"
 
-    def server_recv(self, file: io.BufferedReader, origin: socket.socket):
-        origin.send(pickle.dumps(Segment(ack_flag=True)))
+    def send_file(self, origin: socket.socket, file: io.BufferedReader):
+        while chunk := file.read(MAX_PAYLOAD_SIZE):
+            while True:
+                origin.send(pickle.dumps(Segment(payload=chunk)))
 
+                if self._recv_segment(origin).flags["ACK"] is True:
+                    break
+
+        # TODO Acá hay una posible optimización: en vez de mandar un nuevo
+        # TODO segmento con el FIN _flag_, podríamos simplemente mandar el FIN
+        # TODO _flag_ en el último segmento que envía _bytes_ del archivo. Así,
+        # TODO nos ahorraríamos mandar este segmento extra.
+        origin.send(pickle.dumps(Segment(fin_flag=True)))
+
+    def recv_file(self, origin: socket.socket, file: io.BufferedReader):
         while True:
-            segment = self.recv(origin)
+            segment = self._recv_segment(origin)
 
             if segment.flags["FIN"]:
                 break
 
             file.write(segment.payload)
             origin.send(pickle.dumps(Segment(ack_flag=True)))
-
-    def server_send(self, origin: socket.socket, file: io.BufferedReader):
-        origin.send(pickle.dumps(Segment(ack_flag=True)))
-
-        while chunk := file.read(MAX_PAYLOAD_SIZE):
-            while True:
-                origin.send(pickle.dumps(Segment(payload=chunk)))
-
-                if self.recv(origin).flags["ACK"] is True:
-                    break
-
-        origin.send(pickle.dumps(Segment(fin_flag=True)))
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):
@@ -80,14 +80,7 @@ class StopAndWait(Protocol):
                             ).flags["ACK"] is True:
                 break
 
-        while chunk := file.read(MAX_PAYLOAD_SIZE):
-            while True:
-                origin.send(pickle.dumps(Segment(payload=chunk)))
-
-                if self.recv(origin).flags["ACK"] is True:
-                    break
-
-        origin.send(pickle.dumps(Segment(fin_flag=True)))
+        self.send_file(origin, file)
 
     def client_recv(self, dest: socket.socket, origin: tuple[str, int],
                     file: io.BufferedReader, filename: str):
@@ -103,14 +96,7 @@ class StopAndWait(Protocol):
                             ).flags["ACK"] is True:
                 break
 
-        while True:
-            reply = self.recv(dest)
-
-            if reply.flags["FIN"] is True:
-                break
-
-            file.write(reply.payload)
-            dest.send(pickle.dumps(Segment(ack_flag=True)))
+        self.recv_file(dest, file)
 
 
 class GoBackN(Protocol):

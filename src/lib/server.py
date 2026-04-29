@@ -1,5 +1,6 @@
 from lib.metadata import Metadata, OP_UPLOAD, OP_DOWNLOAD
 from lib.protocol import Protocol, MTU
+from lib.segment import Segment
 import threading
 import argparse
 import socket
@@ -16,23 +17,23 @@ class Server:
         self.storage = args.storage
         os.makedirs(self.storage, exist_ok=True)
 
-        self.clients = {}
-
     def handle_client(self, metadata: Metadata, addr: str):
         print(f"[NUEVO HILO] Atendiendo a {addr}")
         connection_socket = socket.socket(socket.AF_INET,
                                           socket.SOCK_DGRAM)
         connection_socket.connect(addr)
+        # Because of the already-received metadata segment:
+        connection_socket.send(pickle.dumps(Segment(ack_flag=True)))
 
         protocol = Protocol.from_str(metadata.protocol)
         path = os.path.join(self.storage, str(metadata.filename))
 
         if metadata.operation == OP_UPLOAD:
             with open(path, "wb") as file:
-                protocol.server_recv(file, connection_socket)
+                protocol.recv_file(connection_socket, file)
         elif metadata.operation == OP_DOWNLOAD:
             with open(path, "rb") as file:
-                protocol.server_send(connection_socket, file)
+                protocol.send_file(connection_socket, file)
 
     def start(self):
         try:
