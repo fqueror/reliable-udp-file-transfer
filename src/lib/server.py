@@ -1,10 +1,10 @@
 from lib.metadata import OP_UPLOAD, OP_DOWNLOAD
 from lib.protocol import Protocol, MTU
+from queue import Queue
 import threading
 import argparse
 import socket
 import pickle
-import queue
 import os
 
 
@@ -18,7 +18,7 @@ class Server:
 
         self.clients = {}
 
-    def handle_client(self, client_addr: str, client_queue: queue.Queue):
+    def handle_client(self, client_addr: str, client_queue: Queue):
         print(f"[NUEVO HILO] Atendiendo a {client_addr}")
         first_segment = client_queue.get()
         metadata = pickle.loads(first_segment.payload)
@@ -44,7 +44,7 @@ class Server:
                 segment = pickle.loads(data)
 
                 if addr not in self.clients:
-                    client_queue = queue.Queue()
+                    client_queue = Queue()
                     self.clients[addr] = client_queue
                     client_queue.put(segment)
                     thread = threading.Thread(target=self.handle_client,
