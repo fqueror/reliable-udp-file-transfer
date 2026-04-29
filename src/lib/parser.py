@@ -11,7 +11,7 @@ class SpacedHelpFormatter(argparse.HelpFormatter):
         return ", ".join(action.option_strings)
 
 
-def get_args(prog):
+def get_args(prog: str) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog=prog,
                                      formatter_class=SpacedHelpFormatter)
 

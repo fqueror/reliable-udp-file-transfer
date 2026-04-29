@@ -1,6 +1,7 @@
 from lib.metadata import OP_UPLOAD, OP_DOWNLOAD
 from lib.protocol import Protocol, MTU
 import threading
+import argparse
 import socket
 import pickle
 import queue
@@ -8,7 +9,7 @@ import os
 
 
 class Server:
-    def __init__(self, args):
+    def __init__(self, args: argparse.Namespace):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((args.host, args.port))
 
@@ -17,7 +18,7 @@ class Server:
 
         self.clients = {}
 
-    def handle_client(self, client_addr, client_queue):
+    def handle_client(self, client_addr: str, client_queue: queue.Queue):
         print(f"[NUEVO HILO] Atendiendo a {client_addr}")
         first_segment = client_queue.get()
         metadata = pickle.loads(first_segment.payload)
