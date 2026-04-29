@@ -1,6 +1,5 @@
 from lib.metadata import Metadata, OP_UPLOAD, OP_DOWNLOAD
 from lib.segment import Segment
-from queue import Queue
 import socket
 import pickle
 import io
@@ -25,9 +24,15 @@ class Protocol:
             if str == subclass.ID:
                 return subclass()
 
-    def recv(self, socket: socket.socket) -> Segment:
+    def recv(self, dest: socket.socket) -> Segment:
+        """
+        If `dest` is already connected to an `origin` socket with [`connect`](
+        https://docs.python.org/3/library/socket.html#socket.socket.connect),
+        you can use this method to get a segment received from `origin`.
+        """
+
         bytes_received = bytearray(MTU)
-        q_bytes_received = socket.recv_into(bytes_received)
+        q_bytes_received = dest.recv_into(bytes_received)
         return pickle.loads(bytes_received[:q_bytes_received])
 
 
@@ -37,40 +42,42 @@ class StopAndWait(Protocol):
     def __repr__(self):
         return "Stop And Wait"
 
-    def server_recv(self, file: io.BufferedReader, dest: socket.socket,
-                    client_addr: str, client_queue: Queue):
-        dest.sendto(pickle.dumps(Segment(ack_flag=True)), client_addr)
+    def server_recv(self, file: io.BufferedReader, origin: socket.socket):
+        origin.send(pickle.dumps(Segment(ack_flag=True)))
 
         while True:
-            segment = client_queue.get()
+            segment = self.recv(origin)
 
             if segment.flags["FIN"]:
                 break
 
             file.write(segment.payload)
-            dest.sendto(pickle.dumps(Segment(ack_flag=True)), client_addr)
+            origin.send(pickle.dumps(Segment(ack_flag=True)))
 
-    def server_send(self, origin: socket.socket,
-                    client_addr: str, client_queue: Queue,
-                    file: io.BufferedReader):
+    def server_send(self, origin: socket.socket, file: io.BufferedReader):
+        origin.send(pickle.dumps(Segment(ack_flag=True)))
+
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
-                origin.sendto(pickle.dumps(
-                    Segment(payload=chunk)), client_addr)
+                origin.send(pickle.dumps(Segment(payload=chunk)))
 
-                if client_queue.get().flags["ACK"] is True:
+                if self.recv(origin).flags["ACK"] is True:
                     break
 
-        origin.sendto(pickle.dumps(Segment(fin_flag=True)), client_addr)
+        origin.send(pickle.dumps(Segment(fin_flag=True)))
 
-    def client_send(self, origin: socket.socket,
+    def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):
         while True:
-            origin.send(pickle.dumps(
+            origin.sendto(pickle.dumps(
                 Segment(payload=pickle.dumps(
-                    Metadata(OP_UPLOAD, filename, self.ID)))))
+                    Metadata(OP_UPLOAD, filename, self.ID)))), dest)
 
-            if self.recv(origin).flags["ACK"] is True:
+            bytes_received = bytearray(MTU)
+            q_bytes_received, dest = origin.recvfrom_into(bytes_received)
+            origin.connect(dest)
+            if pickle.loads(bytes_received[:q_bytes_received]
+                            ).flags["ACK"] is True:
                 break
 
         while chunk := file.read(MAX_PAYLOAD_SIZE):
@@ -82,11 +89,19 @@ class StopAndWait(Protocol):
 
         origin.send(pickle.dumps(Segment(fin_flag=True)))
 
-    def client_recv(self, dest: socket.socket, file: io.BufferedReader,
-                    filename: str):
-        dest.send(pickle.dumps(
-            Segment(payload=pickle.dumps(
-                Metadata(OP_DOWNLOAD, filename, self.ID)))))
+    def client_recv(self, dest: socket.socket, origin: tuple[str, int],
+                    file: io.BufferedReader, filename: str):
+        while True:
+            dest.sendto(pickle.dumps(
+                Segment(payload=pickle.dumps(
+                    Metadata(OP_DOWNLOAD, filename, self.ID)))), origin)
+            bytes_received = bytearray(MTU)
+            q_bytes_received, origin = dest.recvfrom_into(bytes_received)
+            dest.connect(origin)
+
+            if pickle.loads(bytes_received[:q_bytes_received]
+                            ).flags["ACK"] is True:
+                break
 
         while True:
             reply = self.recv(dest)

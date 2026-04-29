@@ -1,6 +1,5 @@
-from lib.metadata import OP_UPLOAD, OP_DOWNLOAD
+from lib.metadata import Metadata, OP_UPLOAD, OP_DOWNLOAD
 from lib.protocol import Protocol, MTU
-from queue import Queue
 import threading
 import argparse
 import socket
@@ -10,50 +9,43 @@ import os
 
 class Server:
     def __init__(self, args: argparse.Namespace):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind((args.host, args.port))
+        self.welcoming_socket = socket.socket(socket.AF_INET,
+                                              socket.SOCK_DGRAM)
+        self.welcoming_socket.bind((args.host, args.port))
 
         self.storage = args.storage
         os.makedirs(self.storage, exist_ok=True)
 
         self.clients = {}
 
-    def handle_client(self, client_addr: str, client_queue: Queue):
-        print(f"[NUEVO HILO] Atendiendo a {client_addr}")
-        first_segment = client_queue.get()
-        metadata = pickle.loads(first_segment.payload)
+    def handle_client(self, metadata: Metadata, addr: str):
+        print(f"[NUEVO HILO] Atendiendo a {addr}")
+        connection_socket = socket.socket(socket.AF_INET,
+                                          socket.SOCK_DGRAM)
+        connection_socket.connect(addr)
+
         protocol = Protocol.from_str(metadata.protocol)
+        path = os.path.join(self.storage, str(metadata.filename))
 
         if metadata.operation == OP_UPLOAD:
-            with open(os.path.join(self.storage, str(metadata.filename)),
-                      "wb") as file:
-                protocol.server_recv(file, self.socket, client_addr,
-                                     client_queue)
+            with open(path, "wb") as file:
+                protocol.server_recv(file, connection_socket)
         elif metadata.operation == OP_DOWNLOAD:
-            with open(os.path.join(self.storage, str(metadata.filename)),
-                      "rb") as file:
-                protocol.server_send(self.socket, client_addr, client_queue,
-                                     file)
-
-        del self.clients[client_addr]
+            with open(path, "rb") as file:
+                protocol.server_send(connection_socket, file)
 
     def start(self):
         try:
             while True:
-                data, addr = self.socket.recvfrom(MTU)
-                segment = pickle.loads(data)
+                encoded_segment, client_addr = self.welcoming_socket.recvfrom(
+                    MTU)
+                metadata = pickle.loads(pickle.loads(encoded_segment).payload)
 
-                if addr not in self.clients:
-                    client_queue = Queue()
-                    self.clients[addr] = client_queue
-                    client_queue.put(segment)
-                    thread = threading.Thread(target=self.handle_client,
-                                              args=(addr, client_queue))
-                    thread.daemon = True
-                    thread.start()
+                thread = threading.Thread(target=self.handle_client,
+                                          args=(metadata, client_addr))
+                thread.daemon = True
+                thread.start()
 
-                else:
-                    self.clients[addr].put(segment)
         except KeyboardInterrupt:
-            self.socket.close()
+            self.welcoming_socket.close()
             print("\n[APAGANDO] Cerrando el servidor de forma segura...")
