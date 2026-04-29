@@ -12,8 +12,8 @@ class SpacedHelpFormatter(argparse.HelpFormatter):
 
 
 def get_args(prog):
-    parser = argparse.ArgumentParser(
-        prog=prog, formatter_class=SpacedHelpFormatter)
+    parser = argparse.ArgumentParser(prog=prog,
+                                     formatter_class=SpacedHelpFormatter)
 
     verbosity_group = parser.add_mutually_exclusive_group()
     verbosity_group.add_argument("-v", "--verbose", action="store_true",
@@ -34,6 +34,7 @@ def get_args(prog):
         elif prog == "download":
             parser.add_argument("-d", "--dst", metavar="FILEPATH",
                                 action="store", type=pathlib.Path,
+                                default=pathlib.Path("."),
                                 help="destination file path")
 
         parser.add_argument("-n", "--name", metavar="FILENAME", action="store",
@@ -44,7 +45,7 @@ def get_args(prog):
 
     elif prog == "start-server":
         parser.add_argument("-H", "--host", metavar="ADDR", action="store",
-                            help="service IP address")
+                            default="0.0.0.0", help="service IP address")
         parser.add_argument("-p", "--port", action="store", type=int,
                             help="service port")
         parser.add_argument("-s", "--storage", metavar="DIRPATH",
