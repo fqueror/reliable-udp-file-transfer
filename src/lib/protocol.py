@@ -1,5 +1,5 @@
 from lib.metadata import Metadata
-
+import queue
 from lib.segment import Segment
 import socket
 import pickle
@@ -29,26 +29,33 @@ class StopAndWait(Protocol):
         return "Stop And Wait"
 
     # Called by the server to receive a file from a client.
-    def upload_file(
-        self, server_socket, client_addr, client_queue, storage, filename
-    ):
+    def upload_file(self, server_socket, client_addr, client_queue, storage, filename):
         filepath = os.path.join(storage, str(filename))
         file = open(filepath, "wb")
-
         ack = pickle.dumps(Segment(ack_flag=True))
-        server_socket.sendto(ack, client_addr)
+        expected_seq = 0
 
         while True:
-            segment = client_queue.get()
+            try:
+                segment = client_queue.get(timeout=5)
+            except queue.Empty:
+                print("[SERVER] Timeout, abortando")
+                file.close()
+                return
 
             if segment.flags["FIN"]:
+                server_socket.sendto(pickle.dumps(Segment(ack_flag=True, fin_flag=True)), client_addr)
                 break
 
-            file.write(segment.payload)
+            if segment.seq_num == expected_seq:
+                file.write(segment.payload)
+                expected_seq = 1 - expected_seq  
+
             server_socket.sendto(ack, client_addr)
 
         print(f"[FIN] {filename} recibido")
         file.close()
+        print(f"[SERVER] Archivo guardado: {os.path.getsize(filepath)} bytes")
 
     # Called by the server to send a file to a client.
     def download_file(
@@ -76,43 +83,63 @@ class StopAndWait(Protocol):
 
     # Called by the client to send a file to the server.
     def send_file(self, origin_socket: socket.socket, file, filename):
-        metadata = Metadata(filename=filename,
-                            protocol=self.ID, operation=OP_UPLOAD)
+        origin_socket.settimeout(0.5)
+
+        metadata = Metadata(filename=filename, protocol=self.ID, operation=OP_UPLOAD)
         first_segment = Segment(payload=pickle.dumps(metadata))
 
         while True:
             origin_socket.send(pickle.dumps(first_segment))
-
-            bytes_received = bytearray(MTU)
-            q_bytes_received = origin_socket.recv_into(bytes_received)
-            reply = pickle.loads(bytes_received[:q_bytes_received])
-            if reply.flags["ACK"] is True:
-                break
-
-        chunk = file.read(MAX_PAYLOAD_SIZE)
-
-        segment = Segment(
-            payload=chunk)
-
-        while chunk:
-            while True:
-                origin_socket.send(pickle.dumps(segment))
-
+            try:
                 bytes_received = bytearray(MTU)
                 q_bytes_received = origin_socket.recv_into(bytes_received)
                 reply = pickle.loads(bytes_received[:q_bytes_received])
                 if reply.flags["ACK"] is True:
                     break
+            except socket.timeout:
+                continue
+
+        seq = 0
+        chunk = file.read(MAX_PAYLOAD_SIZE)
+        chunk_num = 0
+
+        while chunk:
+            segment = Segment(payload=chunk, seq_num=seq)
+            chunk_num += 1
+            #print(f"[CLIENT] Enviando chunk #{chunk_num}")
+            while True:
+                origin_socket.send(pickle.dumps(segment))
+                try:
+                    bytes_received = bytearray(MTU)
+                    q_bytes_received = origin_socket.recv_into(bytes_received)
+                    reply = pickle.loads(bytes_received[:q_bytes_received])
+                    if reply.flags["ACK"] is True:
+                        seq = 1 - seq
+                        #print(f"[CLIENT] ACK #{chunk_num} recibido")  
+                        break
+                except socket.timeout:
+                    #print(f"[CLIENT] Timeout chunk #{chunk_num}, reintentando...")
+                    continue
 
             chunk = file.read(MAX_PAYLOAD_SIZE)
-            segment = Segment(
-                payload=chunk,
-            )
 
-        origin_socket.send(pickle.dumps(Segment(fin_flag=True)))
+        while True:
+            origin_socket.send(pickle.dumps(Segment(fin_flag=True)))
+            try:
+                bytes_received = bytearray(MTU)
+                q_bytes_received = origin_socket.recv_into(bytes_received)
+                reply = pickle.loads(bytes_received[:q_bytes_received])
+                if reply.flags["ACK"] is True:
+                    break
+            except socket.timeout:
+                continue
+
+        print("[CLIENT] FIN enviado y confirmado, transferencia completa")
 
     # Called by the client to download a file from the server.
     def receive_file(self, client_socket: socket.socket, file, filename):
+        client_socket.settimeout(0.5)
+
         metadata = Metadata(filename=filename,
                             protocol=self.ID, operation=OP_DOWNLOAD)
         client_socket.send(
@@ -121,15 +148,18 @@ class StopAndWait(Protocol):
                     payload=pickle.dumps(metadata))))
 
         while True:
-            bytes_received = bytearray(MTU)
-            q_bytes_received = client_socket.recv_into(bytes_received)
-            reply = pickle.loads(bytes_received[:q_bytes_received])
+            try:
+                bytes_received = bytearray(MTU)
+                q_bytes_received = client_socket.recv_into(bytes_received)
+                reply = pickle.loads(bytes_received[:q_bytes_received])
 
-            if reply.flags["FIN"] is True:
-                break
+                if reply.flags["FIN"] is True:
+                    break
 
-            file.write(reply.payload)
-            client_socket.send(pickle.dumps(Segment(ack_flag=True)))
+                file.write(reply.payload)
+                client_socket.send(pickle.dumps(Segment(ack_flag=True)))
+            except socket.timeout:
+                continue
 
         return
 

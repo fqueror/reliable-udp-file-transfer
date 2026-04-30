@@ -4,9 +4,10 @@ from mininet.net import Mininet
 from mininet.cli import CLI
 from mininet.log import setLogLevel
 from mininet.node import OVSController
+from mininet.link import TCLink
 
 class TwoHostOneSwitchTopology(Topo):
-    def build(self):
+    def build(self, loss=10):
         # Create a switch
         switch = self.addSwitch('s1')
 
@@ -17,16 +18,16 @@ class TwoHostOneSwitchTopology(Topo):
         host2 = self.addHost('h2')
 
         # Connect hosts to the switch
-        self.addLink(host1, switch)
-        self.addLink(host2, switch)
+        self.addLink(host1, switch, cls=TCLink)  
+        self.addLink(host2, switch, cls=TCLink, loss=loss)
     
 if __name__ == '__main__':
 
     setLogLevel('info')
 
     # Create the network with the custom topology
-    topo = TwoHostOneSwitchTopology()
-    net = Mininet(topo=topo, controller=OVSController)
+    topo = TwoHostOneSwitchTopology(loss=10)
+    net = Mininet(topo=topo, controller=OVSController, link=TCLink)
 
     # Start the network
     net.start()

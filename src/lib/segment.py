@@ -14,7 +14,9 @@ class Segment:
         ack_flag: bool = False,
         fin_flag: bool = False,
         payload: bytes = b"",
+        seq_num: int = 0,
 
     ):
         self.flags = {"ACK": ack_flag, "FIN": fin_flag}
         self.payload = payload
+        self.seq_num = seq_num

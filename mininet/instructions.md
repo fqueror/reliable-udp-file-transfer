@@ -48,6 +48,11 @@ h1 python3 src/upload.py -H <IP> -p <PORT> -s <FILEPATH> -n <FILENAME> -r <PROTO
 h1 python3 src/upload.py -H 10.0.0.2 -p 8080 -s mininet/foto1.jpg -n archivo.jpg -r stop-and-wait
 ```
 
+**Para que cuando termine diga cuanto tiempo tardo en transferir el archivo: **
+```bash
+h1 time python3 src/upload.py -H 10.0.0.2 -p 8080 -s mininet/foto1.jpg -n archivo.jpg -r stop-and-wait
+```
+
 ### Download
 
 **Formato:**

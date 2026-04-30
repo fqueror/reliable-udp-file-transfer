@@ -49,12 +49,19 @@ class Server:
         try:
             while True:
                 data, addr = self.socket.recvfrom(MTU)
+                print(f"[SERVER] Paquete recibido de {addr}, active_transfers keys: {list(self.active_transfers.keys())}")
                 segment = pickle.loads(data)
 
                 if addr not in self.active_transfers:
+                    print(f"[SERVER] Nuevo cliente {addr}, mandando ACK")
                     client_queue = queue.Queue()
                     self.active_transfers[addr] = client_queue
                     client_queue.put(segment)
+                    # se manda el ACK antes del hilo porque el cliente espera el ACK para arrancar el timeout, y si se manda después del hilo, 
+                    # el cliente podría mandar el mismo segmento dos veces antes de que el servidor mande el ACK
+                    ack = pickle.dumps(__import__('lib.segment', fromlist=['Segment']).Segment(ack_flag=True))
+                    self.socket.sendto(ack, addr)
+
                     thread = threading.Thread(
                         target=self.handle_client, args=(addr, client_queue)
                     )
@@ -62,6 +69,7 @@ class Server:
                     thread.start()
 
                 else:
+                    print(f"[SERVER] Encolando para cliente existente {addr}")
                     self.active_transfers[addr].put(segment)
         except KeyboardInterrupt:
             self.socket.close()
