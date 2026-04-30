@@ -12,8 +12,8 @@ MTU = 1500
 # size. According to Kurose's book, 1460 bytes is its typical value.
 # TODO Since we use `Segment`, our header is larger than 40 bytes, and we then
 # TODO must use an MSS lower than the typical. However, we should use the
-# TODO highest possible one within that range. For now, 1400 does the
-# TODO job, but we must check if it is the best possible value.
+# TODO highest possible one within that range. For now, 1400 does the job, but
+# TODO we must check if it is the best possible value.
 MAX_PAYLOAD_SIZE = 1400
 
 
@@ -50,10 +50,6 @@ class StopAndWait(Protocol):
                 if self._recv_segment(origin).flags["ACK"] is True:
                     break
 
-        # TODO Acá hay una posible optimización: en vez de mandar un nuevo
-        # TODO segmento con el FIN _flag_, podríamos simplemente mandar el FIN
-        # TODO _flag_ en el último segmento que envía _bytes_ del archivo. Así,
-        # TODO nos ahorraríamos mandar este segmento extra.
         origin.send(pickle.dumps(Segment(fin_flag=True)))
 
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
