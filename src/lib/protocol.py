@@ -6,6 +6,7 @@ import io
 
 MTU = 1500
 MAX_PAYLOAD_SIZE = 1400
+TIMEOUT = 0.5
 
 
 class Protocol:
@@ -28,11 +29,11 @@ class StopAndWait(Protocol):
         return "Stop And Wait"
 
     def send_file(self, origin: socket.socket, file: io.BufferedReader):
-        origin.settimeout(0.5)
+        origin.settimeout(TIMEOUT)
         seq = 0
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
-                origin.send(pickle.dumps(Segment(payload=chunk, seq_num=seq)))
+                origin.send(pickle.dumps(Segment(seq_num=seq, payload=chunk)))
                 try:
                     if self._recv_segment(origin).flags["ACK"]:
                         seq = 1 - seq
@@ -40,19 +41,22 @@ class StopAndWait(Protocol):
                 except socket.timeout:
                     continue
 
-        # FIN con confirmación
         while True:
             origin.send(pickle.dumps(Segment(fin_flag=True)))
             try:
                 if self._recv_segment(origin).flags["ACK"]:
-                    break
+                    try:
+                        if self._recv_segment(origin).flags["FIN"]:
+                            origin.send(pickle.dumps(Segment(ack_flag=True)))
+                            break
+                    except socket.timeout:
+                        continue
             except socket.timeout:
                 continue
 
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
-        origin.settimeout(0.5)
+        origin.settimeout(TIMEOUT)
         expected_seq = 0
-        ack = pickle.dumps(Segment(ack_flag=True))
         while True:
             try:
                 segment = self._recv_segment(origin)
@@ -60,14 +64,21 @@ class StopAndWait(Protocol):
                 continue
 
             if segment.flags["FIN"]:
-                origin.send(pickle.dumps(Segment(ack_flag=True, fin_flag=True)))
-                break
+                origin.send(pickle.dumps(Segment(ack_flag=True)))
+                # Acá en el medio puede que deba ir un _timeout_, según
+                # representa la figura 3.40 del libro.
+                origin.send(pickle.dumps(Segment(fin_flag=True)))
+                try:
+                    if self._recv_segment(origin).flags["ACK"]:
+                        break
+                except socket.timeout:
+                    continue
 
             if segment.seq_num == expected_seq:
                 file.write(segment.payload)
                 expected_seq = 1 - expected_seq
 
-            origin.send(ack)  # siempre manda ACK
+            origin.send(pickle.dumps(Segment(ack_flag=True)))
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):

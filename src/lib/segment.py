@@ -9,14 +9,8 @@ class Segment:
     header is larger than 40 bytes.
     """
 
-    def __init__(
-        self,
-        ack_flag: bool = False,
-        fin_flag: bool = False,
-        payload: bytes = b"",
-        seq_num: int = 0,
-
-    ):
+    def __init__(self, seq_num: int = 0, ack_flag: bool = False,
+                 fin_flag: bool = False, payload: bytes = b""):
+        self.seq_num = seq_num
         self.flags = {"ACK": ack_flag, "FIN": fin_flag}
         self.payload = payload
-        self.seq_num = seq_num

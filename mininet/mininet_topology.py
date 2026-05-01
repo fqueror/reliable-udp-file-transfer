@@ -1,39 +1,31 @@
-
-from mininet.topo import Topo
-from mininet.net import Mininet
-from mininet.cli import CLI
-from mininet.log import setLogLevel
 from mininet.node import OVSController
+from mininet.log import setLogLevel
+from mininet.net import Mininet
 from mininet.link import TCLink
+from mininet.topo import Topo
+from mininet.cli import CLI
 
-class TwoHostOneSwitchTopology(Topo):
-    def build(self, loss=10):
-        # Create a switch
-        switch = self.addSwitch('s1')
 
-        # Create two hosts
-        #cliente
-        host1 = self.addHost('h1')
-        #servidor
-        host2 = self.addHost('h2')
+class TwoHostsOneSwitch(Topo):
+    def build(self, loss=0):
+        switch = self.addSwitch('s1')  # Create a switch.
 
-        # Connect hosts to the switch
-        self.addLink(host1, switch, cls=TCLink)  
-        self.addLink(host2, switch, cls=TCLink, loss=loss)
-    
+        # Create two hosts:
+        server = self.addHost('server')
+        client = self.addHost('client')
+
+        # Connect hosts to the switch:
+        self.addLink(server, switch, cls=TCLink, loss=loss)
+        self.addLink(client, switch, cls=TCLink)
+
+
 if __name__ == '__main__':
-
     setLogLevel('info')
 
-    # Create the network with the custom topology
-    topo = TwoHostOneSwitchTopology(loss=10)
-    net = Mininet(topo=topo, controller=OVSController, link=TCLink)
-
-    # Start the network
+    net = Mininet(topo=TwoHostsOneSwitch(10), controller=OVSController,
+                  link=TCLink)
     net.start()
 
-    # Run the CLI for user interaction
-    CLI(net)
+    CLI(net)  # Run the CLI for user interaction.
 
-    # Stop the network after exiting the CLI
     net.stop()
