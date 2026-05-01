@@ -35,22 +35,31 @@ class StopAndWait(Protocol):
             while True:
                 origin.send(pickle.dumps(Segment(seq_num=seq, payload=chunk)))
                 try:
-                    if self._recv_segment(origin).flags["ACK"]:
+                    reply = self._recv_segment(origin)
+                    if reply.flags["ACK"] and reply.seq_num == seq:
                         seq = 1 - seq
                         break
                 except socket.timeout:
                     continue
 
+        # teardown begins
         while True:
-            origin.send(pickle.dumps(Segment(fin_flag=True)))
+            origin.send(pickle.dumps(Segment(fin_flag=True, seq_num=seq)))
             try:
-                if self._recv_segment(origin).flags["ACK"]:
-                    try:
-                        if self._recv_segment(origin).flags["FIN"]:
-                            origin.send(pickle.dumps(Segment(ack_flag=True)))
-                            break
-                    except socket.timeout:
-                        continue
+                reply = self._recv_segment(origin)
+                if reply.flags["ACK"] and reply.seq_num == seq:
+                    break
+            except socket.timeout:
+                continue
+
+        while True:
+            try:
+                reply = self._recv_segment(origin)
+                if reply.flags["FIN"]:
+                    origin.send(pickle.dumps(
+                        Segment(ack_flag=True, seq_num=reply.seq_num)))
+                    break
+
             except socket.timeout:
                 continue
 
@@ -63,48 +72,66 @@ class StopAndWait(Protocol):
             except socket.timeout:
                 continue
 
+            if segment.seq_num != expected_seq:
+                origin.send(pickle.dumps(
+                    Segment(ack_flag=True, seq_num=1-expected_seq)))
+                continue
+
             if segment.flags["FIN"]:
-                origin.send(pickle.dumps(Segment(ack_flag=True)))
-                # Acá en el medio puede que deba ir un _timeout_, según
-                # representa la figura 3.40 del libro.
-                origin.send(pickle.dumps(Segment(fin_flag=True)))
-                try:
-                    if self._recv_segment(origin).flags["ACK"]:
-                        break
-                except socket.timeout:
-                    continue
+                origin.send(pickle.dumps(
+                    Segment(ack_flag=True, seq_num=expected_seq)))
 
-            if segment.seq_num == expected_seq:
-                file.write(segment.payload)
-                expected_seq = 1 - expected_seq
+                while True:
+                    origin.send(pickle.dumps(
+                        Segment(fin_flag=True, seq_num=expected_seq)))
+                    try:
+                        reply = self._recv_segment(origin)
+                        if reply.flags["ACK"]:
+                            break
+                    except socket.timeout:
+                        continue
 
-            origin.send(pickle.dumps(Segment(ack_flag=True)))
+                break
+
+            file.write(segment.payload)
+            origin.send(pickle.dumps(
+                Segment(ack_flag=True, seq_num=expected_seq)))
+            expected_seq = 1 - expected_seq
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):
         while True:
-            origin.sendto(pickle.dumps(
-                Segment(payload=pickle.dumps(
-                    Metadata(OP_UPLOAD, filename, self.ID)))), dest)
-            bytes_received = bytearray(MTU)
-            q_bytes_received, dest = origin.recvfrom_into(bytes_received)
-            origin.connect(dest)
-            if pickle.loads(bytes_received[:q_bytes_received]).flags["ACK"]:
-                break
+            try:
+                origin.sendto(pickle.dumps(
+                    Segment(payload=pickle.dumps(
+                        Metadata(OP_UPLOAD, filename, self.ID)))), dest)
+                bytes_received = bytearray(MTU)
+                q_bytes_received, dest = origin.recvfrom_into(bytes_received)
+                origin.connect(dest)
+                if pickle.loads(
+                        bytes_received[:q_bytes_received]).flags["ACK"]:
+                    break
+            except socket.timeout:
+                continue
 
         self.send_file(origin, file)
 
     def client_recv(self, dest: socket.socket, origin: tuple[str, int],
                     file: io.BufferedReader, filename: str):
         while True:
-            dest.sendto(pickle.dumps(
-                Segment(payload=pickle.dumps(
-                    Metadata(OP_DOWNLOAD, filename, self.ID)))), origin)
-            bytes_received = bytearray(MTU)
-            q_bytes_received, origin = dest.recvfrom_into(bytes_received)
-            dest.connect(origin)
-            if pickle.loads(bytes_received[:q_bytes_received]).flags["ACK"]:
-                break
+            try:
+                dest.sendto(pickle.dumps(
+                    Segment(payload=pickle.dumps(
+                        Metadata(OP_DOWNLOAD, filename, self.ID)))), origin)
+                bytes_received = bytearray(MTU)
+                q_bytes_received, origin = dest.recvfrom_into(bytes_received)
+                dest.connect(origin)
+                if pickle.loads(
+                        bytes_received[:q_bytes_received]).flags["ACK"]:
+                    break
+
+            except socket.timeout:
+                continue
 
         self.recv_file(dest, file)
 
