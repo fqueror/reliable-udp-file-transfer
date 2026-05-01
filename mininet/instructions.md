@@ -48,7 +48,7 @@ h1 python3 src/upload.py -H <IP> -p <PORT> -s <FILEPATH> -n <FILENAME> -r <PROTO
 h1 python3 src/upload.py -H 10.0.0.2 -p 8080 -s mininet/foto1.jpg -n archivo.jpg -r stop-and-wait
 ```
 
-**Para que cuando termine diga cuanto tiempo tardo en transferir el archivo: **
+**Para que cuando termine diga cuanto tiempo tardo en transferir el archivo:**
 ```bash
 h1 time python3 src/upload.py -H 10.0.0.2 -p 8080 -s mininet/foto1.jpg -n archivo.jpg -r stop-and-wait
 ```
@@ -67,9 +67,9 @@ h1 python3 src/download.py -H 10.0.0.2 -p 8080 -d mininet/download -n archivo.jp
 
 ### Protocolos de uso
 
-Stop & Wait: stop-and-wait
+Stop & Wait: -r stop-and-wait
 
-Go-Back-N: go-back-n
+Go-Back-N: -r go-back-n
 
 ## Verificaciones
 
