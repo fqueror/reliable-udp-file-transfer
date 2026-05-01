@@ -47,7 +47,7 @@ class StopAndWait(Protocol):
             while True:
                 origin.send(pickle.dumps(Segment(payload=chunk)))
 
-                if self._recv_segment(origin).flags["ACK"] is True:
+                if self._recv_segment(origin).flags["ACK"]:
                     break
 
         origin.send(pickle.dumps(Segment(fin_flag=True)))
@@ -55,12 +55,11 @@ class StopAndWait(Protocol):
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
         while True:
             segment = self._recv_segment(origin)
+            origin.send(pickle.dumps(Segment(ack_flag=True)))
+            file.write(segment.payload)
 
             if segment.flags["FIN"]:
                 break
-
-            file.write(segment.payload)
-            origin.send(pickle.dumps(Segment(ack_flag=True)))
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):
@@ -73,7 +72,7 @@ class StopAndWait(Protocol):
             q_bytes_received, dest = origin.recvfrom_into(bytes_received)
             origin.connect(dest)
             if pickle.loads(bytes_received[:q_bytes_received]
-                            ).flags["ACK"] is True:
+                            ).flags["ACK"]:
                 break
 
         self.send_file(origin, file)
