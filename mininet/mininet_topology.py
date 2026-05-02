@@ -22,7 +22,7 @@ class TwoHostsOneSwitch(Topo):
 if __name__ == '__main__':
     setLogLevel('info')
 
-    net = Mininet(topo=TwoHostsOneSwitch(loss=10), controller=OVSController,
+    net = Mininet(topo=TwoHostsOneSwitch(loss=5.1), controller=OVSController,
                   link=TCLink)
     net.start()
 
