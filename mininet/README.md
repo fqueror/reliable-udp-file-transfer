@@ -18,13 +18,14 @@ Ahí, nos encontraremos en la **CLI** de MiniNet. Desde acá, podremos ejecutar 
 
 - Levantamos el servidor: `server python3 src/start_server.py -H 10.0.0.2 -p 12000 -s cloud &`.
 - Subimos un archivo: `client python3 src/upload.py -H 10.0.0.2 -p 12000 -s mininet/foto1.jpg -n archivo.jpg -r stop-and-wait`.
+- Descargar un archivo: `client python3 src/download.py -H 10.0.0.2 -p 12000 -d mininet/download -n archivo.jpg -r stop-and-wait`
 
 ---
 
 En cuanto a **análisis**, tenemos:
 
 - Si indicamos **`time`** entre el _host_ y el programa, nos mostraría durante cuánto tiempo se ejecutó el comando. Por ejemplo, si usamos `client time python3 src/upload.py -H 10.0.0.2 -p 12000 -s mininet/foto1.jpg -n archivo.jpg -r stop-and-wait`, obtendríamos cuánto tardó en subirse el archivo.
-- Con `server ping -c 1000 -i 0.01 10.0.0.2` obtenemos un **análisis de pérdida de paquetes**.
+- Con `client ping -c 1000 -i 0.01 10.0.0.2` obtenemos un **análisis de pérdida de paquetes**.
 - Con `server ps aux | grep python3` vemos los procesos Python corriendo.
 
 ---

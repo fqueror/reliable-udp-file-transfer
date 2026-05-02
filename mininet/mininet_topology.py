@@ -15,14 +15,14 @@ class TwoHostsOneSwitch(Topo):
         client = self.addHost('client')
 
         # Connect hosts to the switch:
-        self.addLink(server, switch, cls=TCLink, loss=loss)
-        self.addLink(client, switch, cls=TCLink)
+        self.addLink(server, switch, cls=TCLink)
+        self.addLink(client, switch, cls=TCLink, loss=loss)
 
 
 if __name__ == '__main__':
     setLogLevel('info')
 
-    net = Mininet(topo=TwoHostsOneSwitch(10), controller=OVSController,
+    net = Mininet(topo=TwoHostsOneSwitch(loss=10), controller=OVSController,
                   link=TCLink)
     net.start()
 

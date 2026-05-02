@@ -6,7 +6,7 @@ import io
 
 MTU = 1500
 MAX_PAYLOAD_SIZE = 1400
-TIMEOUT = 0.5
+TIMEOUT = 0.1
 
 
 class Protocol:
