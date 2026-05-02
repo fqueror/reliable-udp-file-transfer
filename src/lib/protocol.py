@@ -21,6 +21,25 @@ class Protocol:
         q_bytes_received = dest.recv_into(bytes_received)
         return pickle.loads(bytes_received[:q_bytes_received])
 
+    def _handshake(self, origin: socket.socket,
+                   dest: tuple[str, int],
+                   operation: str,
+                   filename: str):
+        origin.settimeout(TIMEOUT)
+        while True:
+            try:
+                origin.sendto(pickle.dumps(
+                    Segment(payload=pickle.dumps(
+                        Metadata(operation, filename, self.ID)))), dest)
+                bytes_received = bytearray(MTU)
+                q_bytes_received, dest = origin.recvfrom_into(bytes_received)
+                origin.connect(dest)
+                if pickle.loads(
+                        bytes_received[:q_bytes_received]).flags["ACK"]:
+                    break
+            except socket.timeout:
+                continue
+
 
 class StopAndWait(Protocol):
     ID = "stop-and-wait"
@@ -100,39 +119,12 @@ class StopAndWait(Protocol):
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):
-        while True:
-            try:
-                origin.sendto(pickle.dumps(
-                    Segment(payload=pickle.dumps(
-                        Metadata(OP_UPLOAD, filename, self.ID)))), dest)
-                bytes_received = bytearray(MTU)
-                q_bytes_received, dest = origin.recvfrom_into(bytes_received)
-                origin.connect(dest)
-                if pickle.loads(
-                        bytes_received[:q_bytes_received]).flags["ACK"]:
-                    break
-            except socket.timeout:
-                continue
-
+        self._handshake(origin, dest, OP_UPLOAD, filename)
         self.send_file(origin, file)
 
     def client_recv(self, dest: socket.socket, origin: tuple[str, int],
                     file: io.BufferedReader, filename: str):
-        while True:
-            try:
-                dest.sendto(pickle.dumps(
-                    Segment(payload=pickle.dumps(
-                        Metadata(OP_DOWNLOAD, filename, self.ID)))), origin)
-                bytes_received = bytearray(MTU)
-                q_bytes_received, origin = dest.recvfrom_into(bytes_received)
-                dest.connect(origin)
-                if pickle.loads(
-                        bytes_received[:q_bytes_received]).flags["ACK"]:
-                    break
-
-            except socket.timeout:
-                continue
-
+        self._handshake(dest, origin, OP_DOWNLOAD, filename)
         self.recv_file(dest, file)
 
 
