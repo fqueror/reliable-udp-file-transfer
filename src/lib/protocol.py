@@ -4,6 +4,7 @@ import socket
 import pickle
 import io
 import time
+import select
 
 MTU = 5000
 MAX_PAYLOAD_SIZE = 4500
@@ -144,6 +145,112 @@ class GoBackN(Protocol):
 
     def __repr__(self):
         return "Go Back N"
+
+    def send_file(self, sock: socket.socket, file: io.BufferedReader):
+        window_size = 10
+        base = 0
+        next_seq_num = 0
+
+        chunks = []
+        while True:
+            data = file.read(MAX_PAYLOAD_SIZE)
+            if not data:
+                break
+            chunks.append(data)
+
+        total_packets = len(chunks)
+        sock.setblocking(False)
+        timeout_manager = TimeoutVariable()
+        start_time = time.time()
+
+        while base < total_packets:
+            while next_seq_num < base + window_size and next_seq_num < total_packets:
+                packet = Segment(seq_num=next_seq_num, payload=chunks[next_seq_num])
+                sock.send(pickle.dumps(packet))
+                if base == next_seq_num:
+                    start_time = time.time()
+                next_seq_num += 1
+
+            current_time = time.time()
+            time_left = max(0.0, timeout_manager.rto - (current_time - start_time))
+            ready, _, _ = select.select([sock], [], [], time_left)
+
+            if ready:
+                try:
+                    ack_packet: Segment = self._recv_segment(sock)
+                    if ack_packet.flags["ACK"] and ack_packet.seq_num >= base:
+                        sample_rtt = time.time() - start_time
+                        timeout_manager.update(sample_rtt)
+                        base = ack_packet.seq_num + 1
+                        start_time = time.time()
+                except Exception:
+                    pass
+            else:
+                next_seq_num = base
+                start_time = time.time()
+
+        sock.setblocking(True)
+        while True:
+            sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=base)))
+            try:
+                sock.settimeout(timeout_manager.rto)
+                reply = self._recv_segment(sock)
+                if reply.flags["ACK"] and reply.seq_num == base:
+                    break
+            except socket.timeout:
+                continue
+
+        while True:
+            try:
+                reply = self._recv_segment(sock)
+                if reply.flags["FIN"]:
+                    sock.send(pickle.dumps(Segment(ack_flag=True, seq_num=reply.seq_num)))
+                    break
+            except socket.timeout:
+                continue
+
+    def recv_file(self, sock: socket.socket, file: io.BufferedWriter):
+        expected_seq_num = 0
+        timeout_manager = TimeoutVariable()
+
+        while True:
+            try:
+                sock.settimeout(None)
+                segment: Segment = self._recv_segment(sock)
+
+                if segment.flags["FIN"]:
+                    sock.send(pickle.dumps(Segment(ack_flag=True, seq_num=segment.seq_num)))
+                    break
+
+                if segment.seq_num == expected_seq_num:
+                    file.write(segment.payload)
+                    sock.send(pickle.dumps(Segment(ack_flag=True, seq_num=expected_seq_num)))
+                    expected_seq_num += 1
+                else:
+                    sock.send(pickle.dumps(Segment(ack_flag=True, seq_num=expected_seq_num - 1)))
+            except Exception:
+                continue
+
+        while True:
+            sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=expected_seq_num)))
+            try:
+                sock.settimeout(timeout_manager.rto)
+                reply = self._recv_segment(sock)
+                if reply.flags["ACK"]:
+                    break
+            except socket.timeout:
+                timeout_manager.on_timeout()
+                continue
+
+    def client_send(self, origin: socket.socket, dest: tuple[str, int],
+                    file: io.BufferedReader, filename: str):
+        self._handshake(origin, dest, OP_UPLOAD, filename)
+        self.send_file(origin, file)
+
+    def client_recv(self, dest: socket.socket, origin: tuple[str, int],
+                    file: io.BufferedReader, filename: str):
+        self._handshake(dest, origin, OP_DOWNLOAD, filename)
+        self.recv_file(dest, file)
 
 
 class TimeoutVariable():
