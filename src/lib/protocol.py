@@ -26,7 +26,8 @@ class Protocol:
                    dest: tuple[str, int],
                    operation: str,
                    filename: str):
-        origin.settimeout(TIMEOUT)
+        timeout_var = TimeoutVariable()
+        origin.settimeout(timeout_var.rto)
         while True:
             try:
                 origin.sendto(pickle.dumps(
