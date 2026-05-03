@@ -48,7 +48,7 @@ class Protocol:
             sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=seq_num)))
             try:
                 reply = self._recv_segment(sock)
-                if reply.flags["ACK"] and reply.seq_num == seq_num:
+                if reply.flags["ACK"] and reply.ack_num == seq_num:
                     break
             except socket.timeout:
                 sock.settimeout(timeout_var.on_timeout())
@@ -59,7 +59,7 @@ class Protocol:
                 reply = self._recv_segment(sock)
                 if reply.flags["FIN"]:
                     sock.send(pickle.dumps(
-                        Segment(ack_flag=True, seq_num=reply.seq_num)))
+                        Segment(ack_flag=True, ack_num=reply.seq_num)))
                     break
 
             except socket.timeout:
@@ -69,14 +69,14 @@ class Protocol:
     def _teardown_recv(self, sock: socket.socket, expected_seq: int,
                        timeout_var) -> None:
         sock.send(pickle.dumps(
-            Segment(ack_flag=True, seq_num=expected_seq)))
+            Segment(ack_flag=True, ack_num=expected_seq)))
 
         while True:
             sock.send(pickle.dumps(
                 Segment(fin_flag=True, seq_num=expected_seq)))
             try:
                 reply = self._recv_segment(sock)
-                if reply.flags["ACK"]:
+                if reply.flags["ACK"] and reply.ack_num == expected_seq:
                     break
             except socket.timeout:
                 timeout_var.on_timeout()
@@ -99,7 +99,7 @@ class StopAndWait(Protocol):
                 try:
                     t_inicio = time.time()
                     reply = self._recv_segment(origin)
-                    if reply.flags["ACK"] and reply.seq_num == seq:
+                    if reply.flags["ACK"] and reply.ack_num == seq:
                         rtt_muestra = time.time() - t_inicio
                         origin.settimeout(timeout_var.update(rtt_muestra))
                         seq = 1 - seq
@@ -124,7 +124,7 @@ class StopAndWait(Protocol):
 
             if segment.seq_num != expected_seq:
                 origin.send(pickle.dumps(
-                    Segment(ack_flag=True, seq_num=1-expected_seq)))
+                    Segment(ack_flag=True, ack_num=1-expected_seq)))
                 continue
 
             if segment.flags["FIN"]:
@@ -133,7 +133,7 @@ class StopAndWait(Protocol):
 
             file.write(segment.payload)
             origin.send(pickle.dumps(
-                Segment(ack_flag=True, seq_num=expected_seq)))
+                Segment(ack_flag=True, ack_num=expected_seq)))
             expected_seq = 1 - expected_seq
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
@@ -188,10 +188,10 @@ class GoBackN(Protocol):
             if ready:
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
-                    if ack_packet.flags["ACK"] and ack_packet.seq_num >= base:
+                    if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:
                         sample_rtt = time.time() - start_time
                         timeout_manager.update(sample_rtt)
-                        base = ack_packet.seq_num + 1
+                        base = ack_packet.ack_num + 1
                         start_time = time.time()
                 except Exception:
                     pass
@@ -219,11 +219,11 @@ class GoBackN(Protocol):
                 if segment.seq_num == expected_seq_num:
                     file.write(segment.payload)
                     sock.send(pickle.dumps(
-                        Segment(ack_flag=True, seq_num=expected_seq_num)))
+                        Segment(ack_flag=True, ack_num=expected_seq_num)))
                     expected_seq_num += 1
                 else:
                     sock.send(pickle.dumps(
-                        Segment(ack_flag=True, seq_num=expected_seq_num - 1)))
+                        Segment(ack_flag=True, ack_num=expected_seq_num - 1)))
             except Exception:
                 continue
 
