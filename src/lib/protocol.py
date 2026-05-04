@@ -124,7 +124,7 @@ class StopAndWait(Protocol):
 
             if segment.seq_num != expected_seq:
                 origin.send(pickle.dumps(
-                    Segment(ack_flag=True, ack_num=1-expected_seq)))
+                    Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue
 
             if segment.flags["FIN"]:

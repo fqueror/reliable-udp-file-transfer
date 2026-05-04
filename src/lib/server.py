@@ -10,12 +10,22 @@ import os
 
 class Server:
     def __init__(self, args: argparse.Namespace):
+        self.host = None
+        self.port = None
+        self.storage = None
+
+        self.config_server(args)
+
         self.welcoming_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_DGRAM)
-        self.welcoming_socket.bind((args.host, args.port))
+        self.welcoming_socket.bind((self.host, self.port))
 
-        self.storage = args.storage
         os.makedirs(self.storage, exist_ok=True)
+
+    def config_server(self, args: argparse.Namespace):
+        self.host = args.host or "0.0.0.0"
+        self.port = args.port or 12000
+        self.storage = args.storage or "./storage"
 
     def handle_client(self, metadata: Metadata, addr: str):
         print(f"[NUEVO HILO] Atendiendo a {addr}")
@@ -36,6 +46,11 @@ class Server:
                 protocol.send_file(connection_socket, file)
 
     def start(self):
+        print(
+            f"[INICIANDO] Servidor en {
+                self.host}:{
+                self.port} y almacenando en {
+                self.storage}")
         try:
             while True:
                 encoded_segment, client_addr = self.welcoming_socket.recvfrom(
