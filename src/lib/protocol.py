@@ -2,13 +2,42 @@ from lib.metadata import Metadata, OP_UPLOAD, OP_DOWNLOAD
 from lib.segment import Segment
 import socket
 import pickle
-import io
-import time
 import select
+import time
+import io
 
-MTU = 5000
-MAX_PAYLOAD_SIZE = 4500
+# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
+# as to avoid fragmentation in lower Internet layers.
+MTU = 1500
+# An MSS is the Maximum Segment Size, though it defines the maximum payload
+# size. According to Kurose's book, 1460 bytes is its typical value.
+# TODO Since we use `Segment`, our header is larger than 40 bytes, and we then
+# TODO must use an MSS lower than the typical. However, we should use the
+# TODO highest possible one within that range. For now, 1300 does the job, but
+# TODO we must check if it is the best possible value.
+MAX_PAYLOAD_SIZE = 1350
 
+
+class TimeoutVariable():
+    def __init__(self):
+        self.srtt = 0.05
+        self.rttvar = 0.01
+        self.rto = 0.1
+
+    def update(self, rtt_muestra):
+        alpha = 0.125
+        beta = 0.25
+        self.srtt = (1 - alpha) * self.srtt + alpha * rtt_muestra
+        self.rttvar = (1 - beta) * self.rttvar + beta * \
+            abs(self.srtt - rtt_muestra)
+        self.rto = max(self.srtt + 4 * self.rttvar, 0.1)
+        return self.rto
+
+    def on_timeout(self):
+        # backoff exponencial, para aumentar el tiempo de espera después
+        # de cada timeout, con un límite máximo de 60 segundos
+        self.rto = min(self.rto * 2, 60)
+        return self.rto
 
 class Protocol:
     @classmethod
@@ -22,10 +51,8 @@ class Protocol:
         q_bytes_received = dest.recv_into(bytes_received)
         return pickle.loads(bytes_received[:q_bytes_received])
 
-    def _handshake(self, origin: socket.socket,
-                   dest: tuple[str, int],
-                   operation: str,
-                   filename: str):
+    def _handshake(self, origin: socket.socket, dest: tuple[str, int],
+                   operation: str, filename: str):
         timeout_var = TimeoutVariable()
         origin.settimeout(timeout_var.rto)
         while True:
@@ -43,7 +70,7 @@ class Protocol:
                 continue
 
     def _teardown_sender(self, sock: socket.socket, seq_num: int,
-                         timeout_var) -> None:
+                         timeout_var: TimeoutVariable) -> None:
         while True:
             sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=seq_num)))
             try:
@@ -67,7 +94,7 @@ class Protocol:
                 continue
 
     def _teardown_recv(self, sock: socket.socket, expected_seq: int,
-                       timeout_var) -> None:
+                       timeout_var: TimeoutVariable) -> None:
         sock.send(pickle.dumps(
             Segment(ack_flag=True, ack_num=expected_seq)))
 
@@ -238,25 +265,3 @@ class GoBackN(Protocol):
                     file: io.BufferedReader, filename: str):
         self._handshake(dest, origin, OP_DOWNLOAD, filename)
         self.recv_file(dest, file)
-
-
-class TimeoutVariable():
-    def __init__(self):
-        self.srtt = 0.05
-        self.rttvar = 0.01
-        self.rto = 0.1
-
-    def update(self, rtt_muestra):
-        alpha = 0.125
-        beta = 0.25
-        self.srtt = (1 - alpha) * self.srtt + alpha * rtt_muestra
-        self.rttvar = (1 - beta) * self.rttvar + beta * \
-            abs(self.srtt - rtt_muestra)
-        self.rto = max(self.srtt + 4 * self.rttvar, 0.1)
-        return self.rto
-
-    def on_timeout(self):
-        # backoff exponencial, para aumentar el tiempo de espera después
-        # de cada timeout, con un límite máximo de 60 segundos
-        self.rto = min(self.rto * 2, 60)
-        return self.rto

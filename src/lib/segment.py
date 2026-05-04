@@ -10,8 +10,8 @@ class Segment:
     """
 
     def __init__(self, seq_num: int = 0, ack_num: int = 0,
-                 ack_flag: bool = False,
-                 fin_flag: bool = False, payload: bytes = b""):
+                 ack_flag: bool = False, fin_flag: bool = False,
+                 payload: bytes = b""):
         self.seq_num = seq_num
         self.ack_num = ack_num
         self.flags = {"ACK": ack_flag, "FIN": fin_flag}
