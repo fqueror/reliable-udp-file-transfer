@@ -39,9 +39,15 @@ def get_args(prog: str) -> argparse.Namespace:
 
         parser.add_argument("-n", "--name", metavar="FILENAME", action="store",
                             help="file name")
-        parser.add_argument("-r", "--protocol", metavar="PROTOCOL",
-                            action="store", type=Protocol.from_str,
-                            help="error recovery protocol")
+        parser.add_argument(
+            "-r",
+            "--protocol",
+            metavar="PROTOCOL",
+            action="store",
+            choices=[
+                "stop-and-wait",
+                "go-back-n"],
+            help="error recovery protocol. Use: stop-and-wait or go-back-n")
 
     elif prog == "start-server":
         parser.add_argument("-H", "--host", metavar="ADDR", action="store",
