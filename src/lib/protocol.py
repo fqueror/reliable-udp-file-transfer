@@ -8,6 +8,7 @@ import select
 
 MTU = 5000
 MAX_PAYLOAD_SIZE = 4500
+MAX_TIMEOUT_HANDSHAKE = 10
 
 
 class Protocol:
@@ -28,7 +29,8 @@ class Protocol:
                    filename: str):
         timeout_var = TimeoutVariable()
         origin.settimeout(timeout_var.rto)
-        while True:
+
+        for attempt in range(MAX_TIMEOUT_HANDSHAKE):
             try:
                 origin.sendto(pickle.dumps(
                     Segment(payload=pickle.dumps(
@@ -38,9 +40,11 @@ class Protocol:
                 origin.connect(dest)
                 if pickle.loads(
                         bytes_received[:q_bytes_received]).flags["ACK"]:
-                    break
+                    return
             except socket.timeout:
-                continue
+                print(f"Intento {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} fallido. Reintentando...")
+
+        raise ConnectionError("Failed to establish connection.")
 
     def _teardown_sender(self, sock: socket.socket, seq_num: int,
                          timeout_var) -> None:
@@ -126,6 +130,10 @@ class StopAndWait(Protocol):
                 origin.send(pickle.dumps(
                     Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue
+
+            if segment.flags["ERR"]:
+                origin.send(pickle.dumps(Segment(ack_flag=True)))
+                raise ConnectionError(pickle.loads(segment.payload))
 
             if segment.flags["FIN"]:
                 self._teardown_recv(origin, expected_seq, timeout_var)

@@ -47,7 +47,7 @@ def get_args(prog: str) -> argparse.Namespace:
             choices=[
                 "stop-and-wait",
                 "go-back-n"],
-            help="error recovery protocol. Use: stop-and-wait or go-back-n")
+            help="error recovery protocol.")
 
     elif prog == "start-server":
         parser.add_argument("-H", "--host", metavar="ADDR", action="store",
@@ -58,3 +58,14 @@ def get_args(prog: str) -> argparse.Namespace:
                             action="store", help="storage directory path")
 
     return parser.parse_args()
+
+def validate_args(args: argparse.Namespace):
+    if args.protocol is None:
+        print("Protocol not specified.")
+        exit(1)
+
+    if args.host is None or args.port is None:
+        print("Host and port must be specified.")
+        exit(1)
+
+    return Protocol.from_str(args.protocol)

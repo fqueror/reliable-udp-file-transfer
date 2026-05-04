@@ -7,6 +7,7 @@ import socket
 import pickle
 import os
 
+MAX_ATTEMPTS = 3
 
 class Server:
     def __init__(self, args: argparse.Namespace):
@@ -20,19 +21,18 @@ class Server:
                                               socket.SOCK_DGRAM)
         self.welcoming_socket.bind((self.host, self.port))
 
-        os.makedirs(self.storage, exist_ok=True)
 
     def config_server(self, args: argparse.Namespace):
         self.host = args.host or "0.0.0.0"
         self.port = args.port or 12000
         self.storage = args.storage or "./storage"
+        os.makedirs(self.storage, exist_ok=True)
 
     def handle_client(self, metadata: Metadata, addr: str):
         print(f"[NUEVO HILO] Atendiendo a {addr}")
         connection_socket = socket.socket(socket.AF_INET,
                                           socket.SOCK_DGRAM)
         connection_socket.connect(addr)
-        # Because of the already-received metadata segment:
         connection_socket.send(pickle.dumps(Segment(ack_flag=True)))
 
         protocol = Protocol.from_str(metadata.protocol)
@@ -42,8 +42,22 @@ class Server:
             with open(path, "wb") as file:
                 protocol.recv_file(connection_socket, file)
         elif metadata.operation == OP_DOWNLOAD:
-            with open(path, "rb") as file:
-                protocol.send_file(connection_socket, file)
+            try:
+                with open(path, "rb") as file:
+                    protocol.send_file(connection_socket, file)
+            except FileNotFoundError:
+                segment = Segment(error_flag=True, payload=pickle.dumps("File not found"))
+                for attempt in range(MAX_ATTEMPTS):
+                    try:
+                        connection_socket.send(pickle.dumps(segment))
+                        ack = pickle.loads(connection_socket.recv(MTU))
+                        if ack.flags["ACK"]:
+                            print(f"File not found. Client {addr} notified.")
+                            break
+                    except socket.timeout:
+                        continue
+                connection_socket.close()
+
 
     def start(self):
         print(
