@@ -7,6 +7,8 @@ import socket
 import pickle
 import os
 
+TIMEOUT = 0.1
+
 
 class Server:
     def __init__(self, args: argparse.Namespace):
@@ -23,7 +25,22 @@ class Server:
                                           socket.SOCK_DGRAM)
         connection_socket.connect(addr)
         # Because of the already-received metadata segment:
-        connection_socket.send(pickle.dumps(Segment(ack_flag=True)))
+
+        connection_socket.settimeout(TIMEOUT)
+
+        while True:
+            connection_socket.send(pickle.dumps(
+                Segment(ack_flag=True, syn_flag=True, seq_num=0, ack_num=1)))
+            try:
+                bytes_received = bytearray(MTU)
+                q_bytes_received = connection_socket.recv_into(bytes_received)
+                reply = pickle.loads(bytes_received[:q_bytes_received])
+
+                if reply.flags["ACK"] and reply.ack_num == 1:
+                    break
+
+            except socket.timeout:
+                continue
 
         protocol = Protocol.from_str(metadata.protocol)
         path = os.path.join(self.storage, str(metadata.filename))
@@ -40,8 +57,12 @@ class Server:
             while True:
                 encoded_segment, client_addr = self.welcoming_socket.recvfrom(
                     MTU)
-                metadata = pickle.loads(pickle.loads(encoded_segment).payload)
+                segment = pickle.loads(encoded_segment)
 
+                if not segment.flags["SYN"]:
+                    continue
+
+                metadata = pickle.loads(segment.payload)
                 thread = threading.Thread(target=self.handle_client,
                                           args=(metadata, client_addr))
                 thread.daemon = True

@@ -39,6 +39,7 @@ class TimeoutVariable():
         self.rto = min(self.rto * 2, 60)
         return self.rto
 
+
 class Protocol:
     @classmethod
     def from_str(cls, str):
@@ -58,14 +59,23 @@ class Protocol:
         while True:
             try:
                 origin.sendto(pickle.dumps(
-                    Segment(payload=pickle.dumps(
+                    Segment(syn_flag=True, payload=pickle.dumps(
                         Metadata(operation, filename, self.ID)))), dest)
+
                 bytes_received = bytearray(MTU)
                 q_bytes_received, dest = origin.recvfrom_into(bytes_received)
-                origin.connect(dest)
-                if pickle.loads(
-                        bytes_received[:q_bytes_received]).flags["ACK"]:
+                reply = pickle.loads(
+                    bytes_received[:q_bytes_received])
+
+                if reply.flags["ACK"] and reply.flags["SYN"] \
+                        and reply.ack_num == 1:
+                    # este último AND puede
+                    # llegar a ser redundante
+                    origin.connect(dest)
+                    origin.send(pickle.dumps(
+                        Segment(ack_flag=True, seq_num=1, ack_num=1)))
                     break
+
             except socket.timeout:
                 continue
 
@@ -145,6 +155,13 @@ class StopAndWait(Protocol):
         while True:
             try:
                 segment = self._recv_segment(origin)
+
+                # parche por si el último ACK del Handshake se pierde
+                if segment.flags["SYN"]:
+                    origin.send(pickle.dumps(
+                        Segment(ack_flag=True, ack_num=1, seq_num=1)))
+                    continue
+
             except socket.timeout:
                 origin.settimeout(timeout_var.on_timeout())
                 continue
@@ -215,6 +232,7 @@ class GoBackN(Protocol):
             if ready:
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
+
                     if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:
                         sample_rtt = time.time() - start_time
                         timeout_manager.update(sample_rtt)
@@ -238,6 +256,12 @@ class GoBackN(Protocol):
             try:
                 sock.settimeout(None)
                 segment: Segment = self._recv_segment(sock)
+
+                # parche por si el último ACK del Handshake se pierde
+                if segment.flags["SYN"]:
+                    sock.send(pickle.dumps(
+                        Segment(ack_flag=True, seq_num=1, ack_num=1)))
+                    continue
 
                 if segment.flags["FIN"] and \
                         segment.seq_num == expected_seq_num:
