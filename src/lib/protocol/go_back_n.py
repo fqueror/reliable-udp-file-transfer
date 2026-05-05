@@ -5,7 +5,7 @@ import pickle
 import select
 
 from lib.protocol.protocol import Protocol
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, GO_BACK_N, WINDOW_SIZE, ACK, ERR, FIN, TIMEOUT
+from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, GO_BACK_N, WINDOW_SIZE, ACK, ERR, FIN, TIMEOUT, SYN
 from lib.segment import Segment
 
 
@@ -56,7 +56,7 @@ class GoBackN(Protocol):
                     ack_packet: Segment = self._recv_segment(sock)
                     start_time = time.time()
 
-                    if ack_packet.flags["SYN"]:
+                    if ack_packet.flags[SYN]:
                         sock.send(pickle.dumps(
                             Segment(ack_flag=True, seq_num=1, ack_num=1)))
                         continue
@@ -86,7 +86,7 @@ class GoBackN(Protocol):
                 segment: Segment = self._recv_segment(sock)
 
                 # parche por si el último ACK del Handshake se pierde
-                if segment.flags["SYN"]:
+                if segment.flags[SYN]:
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, seq_num=1, ack_num=1)))
                     continue

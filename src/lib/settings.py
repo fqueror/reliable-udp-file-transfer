@@ -5,7 +5,7 @@ DOWNLOAD = "download"
 UPLOAD = "upload"
 START_SERVER = "start-server"
 
-# Protocol
+# PROTOCOL
 # We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
 # as to avoid fragmentation in lower Internet layers.
 MTU = 1500
@@ -38,11 +38,13 @@ FILE_NOT_FOUND = "File not found"
 PERMISSION_DENIED = "Permission denied"
 FILE_PATH_NOT_SPECIFIED = "File path not specified"
 DIRECTORY_NOT_FOUND = "Directory not found"
+FAILED_TO_ESTABLISH_CONNECTION = "Failed to establish connection"
 
 # Flags
 ACK = "ACK"
 FIN = "FIN"
 ERR = "ERR"
+SYN = "SYN"
 
 # Timeout
 SRTT = 0.05

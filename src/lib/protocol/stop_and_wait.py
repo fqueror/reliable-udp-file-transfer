@@ -1,11 +1,10 @@
 import io
 import pickle
 import socket
-import time
 
 from lib.protocol.protocol import Protocol
 from lib.segment import Segment
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, STOP_AND_WAIT, ACK, ERR, FIN
+from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, STOP_AND_WAIT, ACK, ERR, FIN, SYN
 
 
 class StopAndWait(Protocol):
@@ -28,7 +27,7 @@ class StopAndWait(Protocol):
                     reply = self._recv_segment(origin)
 
                     # llega retrasmisión.
-                    if reply.flags["SYN"]:
+                    if reply.flags[SYN]:
                         origin.send(pickle.dumps(
                             Segment(ack_flag=True, seq_num=1, ack_num=1)))
                         continue
@@ -53,7 +52,7 @@ class StopAndWait(Protocol):
         while True:
             segment = self._recv_segment(origin)
 
-            if segment.flags["SYN"]:
+            if segment.flags[SYN]:
                 origin.send(pickle.dumps(
                     Segment(ack_flag=True, ack_num=1, seq_num=1)))
                 continue

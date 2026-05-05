@@ -1,4 +1,4 @@
-from lib.settings import ACK, FIN, ERR
+from lib.settings import ACK, FIN, ERR, SYN
 
 
 class Segment:
@@ -20,5 +20,9 @@ class Segment:
                  payload: bytes = b""):
         self.seq_num = seq_num
         self.ack_num = ack_num
-        self.flags = {"SYN": syn_flag,ACK: ack_flag, FIN: fin_flag, ERR: error_flag}
+        self.flags = {
+            SYN: syn_flag,
+            ACK: ack_flag,
+            FIN: fin_flag,
+            ERR: error_flag}
         self.payload = payload

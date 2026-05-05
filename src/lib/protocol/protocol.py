@@ -1,30 +1,10 @@
-
-from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, SRTT, RTTVAR, RTO, ALPHA, BETA, SEC_TIMEOUT_LIMIT, \
-    MAX_RETRIES
-from lib.metadata import Metadata
-from lib.segment import Segment
 import socket
 import pickle
 
+from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, MAX_RETRIES, SYN, FAILED_TO_ESTABLISH_CONNECTION
+from lib.metadata import Metadata
+from lib.segment import Segment
 
-# class TimeoutVariable():
-#     def __init__(self):
-#         self.srtt = SRTT
-#         self.rttvar = RTTVAR
-#         self.rto = RTO
-#
-#     def update(self, rtt_muestra):
-#         self.srtt = (1 - ALPHA) * self.srtt + ALPHA * rtt_muestra
-#         self.rttvar = (1 - BETA) * self.rttvar + BETA * \
-#             abs(self.srtt - rtt_muestra)
-#         self.rto = max(self.srtt + 4 * self.rttvar, 0.1)
-#         return self.rto
-#
-#     def on_timeout(self):
-#         # backoff exponencial, para aumentar el tiempo de espera después
-#         # de cada timeout, con un límite máximo de 60 segundos
-#         self.rto = min(self.rto * 2, SEC_TIMEOUT_LIMIT)
-#         return self.rto
 
 class Protocol:
     def __init__(self, verbose: bool = False, quiet: bool = False):
@@ -64,7 +44,7 @@ class Protocol:
                 reply = pickle.loads(
                     bytes_received[:q_bytes_received])
 
-                if reply.flags[ACK] and reply.flags["SYN"] \
+                if reply.flags[ACK] and reply.flags[SYN] \
                         and reply.ack_num == 1:
                     # este último AND puede
                     # llegar a ser redundante
@@ -78,7 +58,7 @@ class Protocol:
                     f"Attempt {
                         attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} failed. Retrying...")
         else:
-            raise ConnectionError("Failed to establish connection.")
+            raise ConnectionError(FAILED_TO_ESTABLISH_CONNECTION)
 
     def _teardown_sender(self, sock: socket.socket, seq_num: int,
                          ) -> None:
@@ -92,7 +72,7 @@ class Protocol:
                     break
 
                 # con esto evitamos un deadlock fin - fin.
-                if reply.flags["FIN"]:
+                if reply.flags[FIN]:
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=reply.seq_num)))
                     return
@@ -127,11 +107,10 @@ class Protocol:
                 Segment(fin_flag=True, seq_num=expected_seq)))
             try:
                 reply = self._recv_segment(sock)
-                if reply.flags["ACK"] and reply.ack_num == expected_seq:
+                if reply.flags[ACK] and reply.ack_num == expected_seq:
                     break
             except socket.timeout:
                 retries += 1
                 continue
 
         self.log("RECEIVER: Teardown complete.", is_verbose=True)
-

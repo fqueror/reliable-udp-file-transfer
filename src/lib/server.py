@@ -1,13 +1,14 @@
-from lib.metadata import Metadata
-from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, \
-    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK, TIMEOUT
-from lib.protocol.protocol import Protocol, MTU
-from lib.segment import Segment
 import threading
 import argparse
 import socket
 import pickle
 import os
+
+from lib.metadata import Metadata
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, \
+    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK, TIMEOUT, SYN
+from lib.protocol.protocol import Protocol, MTU
+from lib.segment import Segment
 
 
 class Server:
@@ -106,7 +107,7 @@ class Server:
                     MTU)
                 segment = pickle.loads(encoded_segment)
 
-                if not segment.flags["SYN"]:
+                if not segment.flags[SYN]:
                     continue
 
                 with self._lock:

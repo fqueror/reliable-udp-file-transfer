@@ -8,7 +8,6 @@ from lib.protocol.go_back_n import GoBackN
 from lib.protocol.stop_and_wait import StopAndWait
 
 
-
 class SpacedHelpFormatter(argparse.HelpFormatter):
     def _format_action_invocation(self, action):
         if not action.option_strings:

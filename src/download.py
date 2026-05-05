@@ -1,5 +1,4 @@
 from lib.parser import get_args, validate_args
-from lib.parser import get_args
 import socket
 import os
 
