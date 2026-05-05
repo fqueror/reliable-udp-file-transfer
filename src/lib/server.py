@@ -1,5 +1,6 @@
 from lib.metadata import Metadata
-from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, \
+    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND
 from lib.protocol.protocol import Protocol, MTU
 from lib.segment import Segment
 import threading
@@ -24,9 +25,9 @@ class Server:
         self.welcoming_socket.bind((self.host, self.port))
 
     def config_server(self, args: argparse.Namespace):
-        self.host = args.host or "0.0.0.0"
-        self.port = args.port or 12000
-        self.storage = args.storage or "./storage"
+        self.host = args.host or SERVER_DEFAULT_HOST
+        self.port = args.port or SERVER_DEFAULT_PORT
+        self.storage = args.storage or SERVER_DEFAULT_STORAGE
         os.makedirs(self.storage, exist_ok=True)
 
     def log(self, message: str, is_verbose: bool = False):
@@ -37,7 +38,7 @@ class Server:
         print(message)
 
     def handle_client(self, metadata: Metadata, addr: str):
-        self.log(f"[NUEVO HILO] Atendiendo a {addr}")
+        self.log(f"[SOCKET] Listening to {addr}")
         connection_socket = socket.socket(socket.AF_INET,
                                           socket.SOCK_DGRAM)
         connection_socket.connect(addr)
@@ -50,16 +51,16 @@ class Server:
         path = os.path.join(self.storage, str(metadata.filename))
 
         if metadata.operation == OP_UPLOAD:
-            with open(path, "wb") as file:
+            with open(path, FILE_WRITER) as file:
                 protocol.recv_file(connection_socket, file)
         elif metadata.operation == OP_DOWNLOAD:
             try:
-                with open(path, "rb") as file:
+                with open(path, FILE_READER) as file:
                     protocol.send_file(connection_socket, file)
             except FileNotFoundError:
                 segment = Segment(
                     error_flag=True,
-                    payload=pickle.dumps("File not found"))
+                    payload=pickle.dumps(FILE_NOT_FOUND))
                 for attempt in range(MAX_ATTEMPTS):
                     try:
                         connection_socket.send(pickle.dumps(segment))

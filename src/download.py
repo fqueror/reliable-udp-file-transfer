@@ -7,14 +7,17 @@ if __name__ == "__main__":
     protocol = validate_args(args)
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    file_path = os.path.join(args.dst, args.name)
 
     try:
-        with open(os.path.join(args.dst, args.name), "wb") as file:
+        with open(file_path, "wb") as file:
             protocol.client_recv(client_socket, (args.host, args.port), file,
                                  args.name)
     except FileNotFoundError:
         print("Directory not found.")
     except ConnectionError as e:
         print(f"Connection error: {e}")
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
     client_socket.close()
