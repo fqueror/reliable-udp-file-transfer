@@ -259,6 +259,10 @@ class GoBackN(Protocol):
                 sock.settimeout(None)
                 segment: Segment = self._recv_segment(sock)
 
+                if segment.flags["ERR"]:
+                    sock.send(pickle.dumps(Segment(ack_flag=True)))
+                    raise ConnectionError(pickle.loads(segment.payload))
+
                 if segment.flags["FIN"] and \
                         segment.seq_num == expected_seq_num:
                     break
@@ -274,7 +278,11 @@ class GoBackN(Protocol):
                              is_verbose=True)
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num - 1)))
-            except Exception:
+            except ConnectionError as e:
+                print(f"Connection error: {e}")
+                return
+            except Exception as e:
+                print(f"Error: {e}")
                 continue
 
         self._teardown_recv(sock, expected_seq_num, timeout_manager)
