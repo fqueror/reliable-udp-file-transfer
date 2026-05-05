@@ -1,7 +1,7 @@
 from lib.metadata import Metadata
 from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, \
-    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK
-from lib.protocol.protocol import Protocol, MTU, TIMEOUT
+    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK, TIMEOUT
+from lib.protocol.protocol import Protocol, MTU
 from lib.segment import Segment
 import threading
 import argparse
@@ -23,14 +23,14 @@ class Server:
         self.welcoming_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_DGRAM)
         self.welcoming_socket.bind((self.host, self.port))
+        self._clients_in_progress: dict[tuple, socket.socket] = {}
+        self._lock = threading.Lock()
 
     def config_server(self, args: argparse.Namespace):
         self.host = args.host or SERVER_DEFAULT_HOST
         self.port = args.port or SERVER_DEFAULT_PORT
         self.storage = args.storage or SERVER_DEFAULT_STORAGE
         os.makedirs(self.storage, exist_ok=True)
-        self._clients_in_progress: dict[tuple, socket.socket] = {}
-        self._lock = threading.Lock()
 
     def log(self, message: str, is_verbose: bool = False):
         if self.quiet:

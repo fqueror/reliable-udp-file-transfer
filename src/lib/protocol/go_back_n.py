@@ -4,8 +4,8 @@ import time
 import pickle
 import select
 
-from lib.protocol.protocol import Protocol, TimeoutVariable
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, GO_BACK_N, WINDOW_SIZE, ACK, ERR, FIN
+from lib.protocol.protocol import Protocol
+from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, GO_BACK_N, WINDOW_SIZE, ACK, ERR, FIN, TIMEOUT
 from lib.segment import Segment
 
 
@@ -29,8 +29,6 @@ class GoBackN(Protocol):
 
         total_packets = len(chunks)
         sock.setblocking(False)
-        timeout_manager = TimeoutVariable()
-        start_time = time.time()
 
         self.log(
             f"SENDER: Starting transfer of {total_packets} packets with Go-Back-N.")
@@ -49,42 +47,49 @@ class GoBackN(Protocol):
                 next_seq_num += 1
 
             current_time = time.time()
-            time_left = max(0.0, timeout_manager.rto -
+            time_left = max(0.0, TIMEOUT -
                             (current_time - start_time))
             ready, _, _ = select.select([sock], [], [], time_left)
 
             if ready:
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
+                    start_time = time.time()
+
+                    if ack_packet.flags["SYN"]:
+                        sock.send(pickle.dumps(
+                            Segment(ack_flag=True, seq_num=1, ack_num=1)))
+                        continue
+
                     if ack_packet.flags[ACK] and ack_packet.ack_num >= base:
                         self.log(
                             f"SENDER: Received ACK {
                                 ack_packet.ack_num}",
                             is_verbose=True)
-                        sample_rtt = time.time() - start_time
-                        timeout_manager.update(sample_rtt)
                         base = ack_packet.ack_num + 1
-                        start_time = time.time()
                 except Exception:
                     pass
             else:
                 self.log(f"SENDER: Timeout! Resending from {base}")
                 next_seq_num = base
-                start_time = time.time()
 
         sock.setblocking(True)
-        sock.settimeout(timeout_manager.rto)
-        self._teardown_sender(sock, base, timeout_manager)
+        self._teardown_sender(sock, base)
 
     def recv_file(self, sock: socket.socket, file: io.BufferedWriter):
         expected_seq_num = 0
-        timeout_manager = TimeoutVariable()
         self.log("RECEIVER: Ready to receive data with Go-Back-N.")
 
         while True:
             try:
                 sock.settimeout(None)
                 segment: Segment = self._recv_segment(sock)
+
+                # parche por si el último ACK del Handshake se pierde
+                if segment.flags["SYN"]:
+                    sock.send(pickle.dumps(
+                        Segment(ack_flag=True, seq_num=1, ack_num=1)))
+                    continue
 
                 if segment.flags[ERR]:
                     sock.send(pickle.dumps(Segment(ack_flag=True)))
@@ -114,7 +119,7 @@ class GoBackN(Protocol):
                 print(f"Error: {e}")
                 continue
 
-        self._teardown_recv(sock, expected_seq_num, timeout_manager)
+        self._teardown_recv(sock, expected_seq_num)
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):

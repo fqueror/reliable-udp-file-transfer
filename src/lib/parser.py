@@ -1,11 +1,12 @@
 import argparse
 import pathlib
 
+from lib.settings import STOP_AND_WAIT, GO_BACK_N, UPLOAD, DOWNLOAD, START_SERVER
 from lib.protocol.protocol import Protocol
 # No borrar estos imports
 from lib.protocol.go_back_n import GoBackN
 from lib.protocol.stop_and_wait import StopAndWait
-from lib.settings import STOP_AND_WAIT, GO_BACK_N, UPLOAD, DOWNLOAD, START_SERVER
+
 
 
 class SpacedHelpFormatter(argparse.HelpFormatter):

@@ -16,6 +16,7 @@ class Segment:
                  syn_flag: bool = False,
                  ack_flag: bool = False,
                  fin_flag: bool = False,
+                 error_flag: bool = False,
                  payload: bytes = b""):
         self.seq_num = seq_num
         self.ack_num = ack_num

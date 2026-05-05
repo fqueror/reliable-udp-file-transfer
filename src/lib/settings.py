@@ -10,12 +10,14 @@ START_SERVER = "start-server"
 # as to avoid fragmentation in lower Internet layers.
 MTU = 1500
 # An MSS is the Maximum Segment Size, though it defines the maximum payload
-# size. According to Kurose's book, 1460 bytes is its typical value.
-# TODO Since we use `Segment`, our header is larger than 40 bytes, and we then
-# TODO must use an MSS lower than the typical. However, we should use the
-# TODO highest possible one within that range. For now, 1300 does the job, but
-# TODO we must check if it is the best possible value.
+# size. According to Kurose's book, 1460 bytes is its typical value, but we use
+# less than that since out segment's header uses more than 40 bytes.
+# TODO We should keep it in the highest possible value.
 MAX_PAYLOAD_SIZE = 1350
+MAX_RETRIES = 5
+# After trying different values, this is the one that got us the best
+# performance:
+TIMEOUT = 0.05
 MAX_TIMEOUT_HANDSHAKE = 10
 STOP_AND_WAIT = "stop-and-wait"
 GO_BACK_N = "go-back-n"

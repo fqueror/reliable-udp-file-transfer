@@ -15,8 +15,6 @@ class StopAndWait(Protocol):
         return "Stop And Wait"
 
     def send_file(self, origin: socket.socket, file: io.BufferedReader):
-        timeout_var = TimeoutVariable()
-        origin.settimeout(timeout_var.rto)
         seq = 0
 
         self.log("SENDER: Starting transfer with Stop & Wait.")
@@ -27,36 +25,37 @@ class StopAndWait(Protocol):
                 self.log(f"SENDER: Sent packet {seq}", is_verbose=True)
 
                 try:
-                    t_inicio = time.time()
                     reply = self._recv_segment(origin)
+
+                    # llega retrasmisión.
+                    if reply.flags["SYN"]:
+                        origin.send(pickle.dumps(
+                            Segment(ack_flag=True, seq_num=1, ack_num=1)))
+                        continue
 
                     if reply.flags[ACK] and reply.ack_num == seq:
                         self.log(
                             f"SENDER: Received ACK {seq}",
                             is_verbose=True)
-                        rtt_muestra = time.time() - t_inicio
-                        origin.settimeout(timeout_var.update(rtt_muestra))
                         seq = 1 - seq
                         break
                 except socket.timeout:
                     self.log(f"SENDER: Timeout! Resending packet {seq}")
-                    origin.settimeout(timeout_var.on_timeout())
                     continue
 
-        self._teardown_sender(origin, seq, timeout_var)
+        self._teardown_sender(origin, seq)
 
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
-        timeout_var = TimeoutVariable()
-        origin.settimeout(timeout_var.rto)
         expected_seq = 0
 
         self.log("RECEIVER: Ready to receive data with Stop & Wait.")
 
         while True:
-            try:
-                segment = self._recv_segment(origin)
-            except socket.timeout:
-                origin.settimeout(timeout_var.on_timeout())
+            segment = self._recv_segment(origin)
+
+            if segment.flags["SYN"]:
+                origin.send(pickle.dumps(
+                    Segment(ack_flag=True, ack_num=1, seq_num=1)))
                 continue
 
             if segment.seq_num != expected_seq:
@@ -73,7 +72,7 @@ class StopAndWait(Protocol):
 
             if segment.flags[FIN]:
                 self.log("RECEIVER: FIN received.")
-                self._teardown_recv(origin, expected_seq, timeout_var)
+                self._teardown_recv(origin, expected_seq)
                 break
 
             file.write(segment.payload)

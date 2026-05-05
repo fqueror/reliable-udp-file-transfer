@@ -1,4 +1,6 @@
-from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, SRTT, RTTVAR, RTO, ALPHA, BETA, SEC_TIMEOUT_LIMIT
+
+from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, SRTT, RTTVAR, RTO, ALPHA, BETA, SEC_TIMEOUT_LIMIT, \
+    MAX_RETRIES
 from lib.metadata import Metadata
 from lib.segment import Segment
 import socket
@@ -50,20 +52,26 @@ class Protocol:
                    dest: tuple[str, int],
                    operation: str,
                    filename: str):
-        timeout_var = TimeoutVariable()
-        origin.settimeout(timeout_var.rto)
 
         for attempt in range(MAX_TIMEOUT_HANDSHAKE):
             try:
                 origin.sendto(pickle.dumps(
-                    Segment(payload=pickle.dumps(
+                    Segment(syn_flag=True, payload=pickle.dumps(
                         Metadata(operation, filename, self.ID)))), dest)
                 bytes_received = bytearray(MTU)
                 q_bytes_received, dest = origin.recvfrom_into(bytes_received)
-                origin.connect(dest)
-                if pickle.loads(
-                        bytes_received[:q_bytes_received]).flags[ACK]:
-                    return
+                reply = pickle.loads(
+                    bytes_received[:q_bytes_received])
+
+                if reply.flags[ACK] and reply.flags["SYN"] \
+                        and reply.ack_num == 1:
+                    # este último AND puede
+                    # llegar a ser redundante
+                    origin.connect(dest)
+                    origin.send(pickle.dumps(
+                        Segment(ack_flag=True, seq_num=1, ack_num=1)))
+                    break
+
             except socket.timeout:
                 self.log(
                     f"Attempt {
@@ -72,7 +80,7 @@ class Protocol:
         raise ConnectionError("Failed to establish connection.")
 
     def _teardown_sender(self, sock: socket.socket, seq_num: int,
-                         timeout_var: TimeoutVariable) -> None:
+                         ) -> None:
         self.log("SENDER: Starting teardown...", is_verbose=True)
 
         while True:
@@ -81,11 +89,18 @@ class Protocol:
                 reply = self._recv_segment(sock)
                 if reply.flags[ACK] and reply.ack_num == seq_num:
                     break
+
+                # con esto evitamos un deadlock fin - fin.
+                if reply.flags["FIN"]:
+                    sock.send(pickle.dumps(
+                        Segment(ack_flag=True, ack_num=reply.seq_num)))
+                    return
+
             except socket.timeout:
-                sock.settimeout(timeout_var.on_timeout())
                 continue
 
-        while True:
+        retries = 0
+        while retries < MAX_RETRIES:
             try:
                 reply = self._recv_segment(sock)
                 if reply.flags[FIN]:
@@ -94,47 +109,28 @@ class Protocol:
                     break
 
             except socket.timeout:
-                sock.settimeout(timeout_var.on_timeout())
+                retries += 1
                 continue
 
         self.log("SENDER: Teardown complete.", is_verbose=True)
 
-    def _teardown_recv(self, sock: socket.socket, expected_seq: int,
-                       timeout_var: TimeoutVariable) -> None:
+    def _teardown_recv(self, sock: socket.socket, expected_seq: int) -> None:
         self.log("RECEIVER: Starting teardown...", is_verbose=True)
 
         sock.send(pickle.dumps(
             Segment(ack_flag=True, ack_num=expected_seq)))
+        retries = 0
 
-        while True:
+        while retries < MAX_RETRIES:
             sock.send(pickle.dumps(
                 Segment(fin_flag=True, seq_num=expected_seq)))
             try:
                 reply = self._recv_segment(sock)
-                if reply.flags[ACK] and reply.ack_num == expected_seq:
+                if reply.flags["ACK"] and reply.ack_num == expected_seq:
                     break
             except socket.timeout:
-                timeout_var.on_timeout()
+                retries += 1
                 continue
 
         self.log("RECEIVER: Teardown complete.", is_verbose=True)
 
-
-class TimeoutVariable():
-    def __init__(self):
-        self.srtt = SRTT
-        self.rttvar = RTTVAR
-        self.rto = RTO
-
-    def update(self, rtt_muestra):
-        self.srtt = (1 - ALPHA) * self.srtt + ALPHA * rtt_muestra
-        self.rttvar = (1 - BETA) * self.rttvar + BETA * \
-            abs(self.srtt - rtt_muestra)
-        self.rto = max(self.srtt + 4 * self.rttvar, 0.1)
-        return self.rto
-
-    def on_timeout(self):
-        # backoff exponencial, para aumentar el tiempo de espera después
-        # de cada timeout, con un límite máximo de 60 segundos
-        self.rto = min(self.rto * 2, SEC_TIMEOUT_LIMIT)
-        return self.rto
