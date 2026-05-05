@@ -26,7 +26,7 @@ class MultipleHostsOneSwitch(Topo):
 if __name__ == '__main__':
     setLogLevel('info')
 
-    net = Mininet(topo=MultipleHostsOneSwitch(loss=10),
+    net = Mininet(topo=MultipleHostsOneSwitch(loss=5.1),
                   controller=OVSController,
                   link=TCLink)
     net.start()

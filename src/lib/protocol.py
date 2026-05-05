@@ -16,6 +16,7 @@ MTU = 1500
 # TODO highest possible one within that range. For now, 1300 does the job, but
 # TODO we must check if it is the best possible value.
 MAX_PAYLOAD_SIZE = 1350
+MAX_RETRIES = 5
 
 
 class TimeoutVariable():
@@ -87,11 +88,19 @@ class Protocol:
                 reply = self._recv_segment(sock)
                 if reply.flags["ACK"] and reply.ack_num == seq_num:
                     break
+
+                # con esto evitamos un deadlock fin - fin.
+                if reply.flags["FIN"]:
+                    sock.send(pickle.dumps(
+                        Segment(ack_flag=True, ack_num=reply.seq_num)))
+                    return
+
             except socket.timeout:
                 sock.settimeout(timeout_var.on_timeout())
                 continue
 
-        while True:
+        retries = 0
+        while retries < MAX_RETRIES:
             try:
                 reply = self._recv_segment(sock)
                 if reply.flags["FIN"]:
@@ -101,14 +110,16 @@ class Protocol:
 
             except socket.timeout:
                 sock.settimeout(timeout_var.on_timeout())
+                retries += 1
                 continue
 
     def _teardown_recv(self, sock: socket.socket, expected_seq: int,
                        timeout_var: TimeoutVariable) -> None:
         sock.send(pickle.dumps(
             Segment(ack_flag=True, ack_num=expected_seq)))
+        retries = 0
 
-        while True:
+        while retries < MAX_RETRIES:
             sock.send(pickle.dumps(
                 Segment(fin_flag=True, seq_num=expected_seq)))
             try:
@@ -116,7 +127,8 @@ class Protocol:
                 if reply.flags["ACK"] and reply.ack_num == expected_seq:
                     break
             except socket.timeout:
-                timeout_var.on_timeout()
+                sock.settimeout(timeout_var.on_timeout())
+                retries += 1
                 continue
 
 
@@ -136,6 +148,13 @@ class StopAndWait(Protocol):
                 try:
                     t_inicio = time.time()
                     reply = self._recv_segment(origin)
+
+                    # llega retrasmisión.
+                    if reply.flags["SYN"]:
+                        origin.send(pickle.dumps(
+                            Segment(ack_flag=True, seq_num=1, ack_num=1)))
+                        continue
+
                     if reply.flags["ACK"] and reply.ack_num == seq:
                         rtt_muestra = time.time() - t_inicio
                         origin.settimeout(timeout_var.update(rtt_muestra))
@@ -234,6 +253,8 @@ class GoBackN(Protocol):
                     ack_packet: Segment = self._recv_segment(sock)
 
                     if ack_packet.flags["SYN"]:
+                        sock.send(pickle.dumps(
+                            Segment(ack_flag=True, seq_num=1, ack_num=1)))
                         continue
 
                     if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:

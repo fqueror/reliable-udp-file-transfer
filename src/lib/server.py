@@ -38,15 +38,10 @@ class Server:
 
                     if reply.flags["ACK"] and reply.ack_num == 1:
                         break
-                    else:
-                        print(
-                            f"[SERVER] Segmento inesperado en handshake: flags=\
-                            {reply.flags}, ack_num={reply.ack_num}")
 
                 except socket.timeout:
                     continue
 
-            print(f"[SERVER] Handshake completo con {addr}")
             protocol = Protocol.from_str(metadata.protocol)
             path = os.path.join(self.storage, str(metadata.filename))
 
