@@ -233,6 +233,9 @@ class GoBackN(Protocol):
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
 
+                    if ack_packet.flags["SYN"]:
+                        continue
+
                     if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:
                         sample_rtt = time.time() - start_time
                         timeout_manager.update(sample_rtt)
