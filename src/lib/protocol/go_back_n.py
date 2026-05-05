@@ -32,7 +32,8 @@ class GoBackN(Protocol):
         timeout_manager = TimeoutVariable()
         start_time = time.time()
 
-        self.log(f"SENDER: Starting transfer of {total_packets} packets with Go-Back-N.")
+        self.log(
+            f"SENDER: Starting transfer of {total_packets} packets with Go-Back-N.")
 
         while base < total_packets:
             while next_seq_num < base + window_size and \
@@ -40,7 +41,9 @@ class GoBackN(Protocol):
                 packet = Segment(seq_num=next_seq_num,
                                  payload=chunks[next_seq_num])
                 sock.send(pickle.dumps(packet))
-                self.log(f"SENDER: Sent packet {next_seq_num}", is_verbose=True)
+                self.log(
+                    f"SENDER: Sent packet {next_seq_num}",
+                    is_verbose=True)
                 if base == next_seq_num:
                     start_time = time.time()
                 next_seq_num += 1
@@ -54,7 +57,10 @@ class GoBackN(Protocol):
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
                     if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:
-                        self.log(f"SENDER: Received ACK {ack_packet.ack_num}", is_verbose=True)
+                        self.log(
+                            f"SENDER: Received ACK {
+                                ack_packet.ack_num}",
+                            is_verbose=True)
                         sample_rtt = time.time() - start_time
                         timeout_manager.update(sample_rtt)
                         base = ack_packet.ack_num + 1
@@ -90,13 +96,16 @@ class GoBackN(Protocol):
 
                 if segment.seq_num == expected_seq_num:
                     file.write(segment.payload)
-                    self.log(f"RECEIVER: Got packet {expected_seq_num}", is_verbose=True)
+                    self.log(
+                        f"RECEIVER: Got packet {expected_seq_num}",
+                        is_verbose=True)
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num)))
                     expected_seq_num += 1
                 else:
-                    self.log(f"RECEIVER: Out of order. Expected {expected_seq_num}, got {segment.seq_num}",
-                             is_verbose=True)
+                    self.log(
+                        f"RECEIVER: Out of order. Expected {expected_seq_num}, got {
+                            segment.seq_num}", is_verbose=True)
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num - 1)))
             except ConnectionError as e:

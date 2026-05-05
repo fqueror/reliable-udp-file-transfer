@@ -31,7 +31,9 @@ class StopAndWait(Protocol):
                     reply = self._recv_segment(origin)
 
                     if reply.flags["ACK"] and reply.ack_num == seq:
-                        self.log(f"SENDER: Received ACK {seq}", is_verbose=True)
+                        self.log(
+                            f"SENDER: Received ACK {seq}",
+                            is_verbose=True)
                         rtt_muestra = time.time() - t_inicio
                         origin.settimeout(timeout_var.update(rtt_muestra))
                         seq = 1 - seq
@@ -58,8 +60,9 @@ class StopAndWait(Protocol):
                 continue
 
             if segment.seq_num != expected_seq:
-                self.log(f"RECEIVER: Wrong sequence number. Expected {expected_seq}, got {segment.seq_num}",
-                         is_verbose=True)
+                self.log(
+                    f"RECEIVER: Wrong sequence number. Expected {expected_seq}, got {
+                        segment.seq_num}", is_verbose=True)
                 origin.send(pickle.dumps(
                     Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue

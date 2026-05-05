@@ -11,7 +11,7 @@ if __name__ == "__main__":
     try:
         with open(os.path.join(args.dst, args.name), "wb") as file:
             protocol.client_recv(client_socket, (args.host, args.port), file,
-                                  args.name)
+                                 args.name)
     except FileNotFoundError:
         print("Directory not found.")
     except ConnectionError as e:

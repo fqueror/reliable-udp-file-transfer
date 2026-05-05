@@ -62,6 +62,7 @@ def get_args(prog: str) -> argparse.Namespace:
 
     return parser.parse_args()
 
+
 def validate_args(args: argparse.Namespace):
     if args.protocol is None:
         print("Protocol not specified.")

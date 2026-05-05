@@ -4,6 +4,7 @@ from lib.segment import Segment
 import socket
 import pickle
 
+
 class Protocol:
     def __init__(self, verbose: bool = False, quiet: bool = False):
         self.verbose = verbose
@@ -46,7 +47,9 @@ class Protocol:
                         bytes_received[:q_bytes_received]).flags["ACK"]:
                     return
             except socket.timeout:
-                self.log(f"Intento {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} fallido. Reintentando...")
+                self.log(
+                    f"Intento {
+                        attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} fallido. Reintentando...")
 
         raise ConnectionError("Failed to establish connection.")
 

@@ -8,6 +8,7 @@ import socket
 import pickle
 import os
 
+
 class Server:
     def __init__(self, args: argparse.Namespace):
         self.host = None
@@ -21,7 +22,6 @@ class Server:
         self.welcoming_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_DGRAM)
         self.welcoming_socket.bind((self.host, self.port))
-
 
     def config_server(self, args: argparse.Namespace):
         self.host = args.host or "0.0.0.0"
@@ -57,21 +57,27 @@ class Server:
                 with open(path, "rb") as file:
                     protocol.send_file(connection_socket, file)
             except FileNotFoundError:
-                segment = Segment(error_flag=True, payload=pickle.dumps("File not found"))
+                segment = Segment(
+                    error_flag=True,
+                    payload=pickle.dumps("File not found"))
                 for attempt in range(MAX_ATTEMPTS):
                     try:
                         connection_socket.send(pickle.dumps(segment))
                         ack = pickle.loads(connection_socket.recv(MTU))
                         if ack.flags["ACK"]:
-                            self.log(f"File not found. Client {addr} notified.")
+                            self.log(
+                                f"File not found. Client {addr} notified.")
                             break
                     except socket.timeout:
                         continue
                 connection_socket.close()
 
-
     def start(self):
-        self.log(f"[INICIANDO] Servidor en {self.host}:{self.port} y almacenando en {self.storage}")
+        self.log(
+            f"[INICIANDO] Servidor en {
+                self.host}:{
+                self.port} y almacenando en {
+                self.storage}")
         try:
             while True:
                 encoded_segment, client_addr = self.welcoming_socket.recvfrom(
