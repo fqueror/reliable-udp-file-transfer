@@ -4,6 +4,24 @@ from lib.segment import Segment
 import socket
 import pickle
 
+class TimeoutVariable():
+    def __init__(self):
+        self.srtt = SRTT
+        self.rttvar = RTTVAR
+        self.rto = RTO
+
+    def update(self, rtt_muestra):
+        self.srtt = (1 - ALPHA) * self.srtt + ALPHA * rtt_muestra
+        self.rttvar = (1 - BETA) * self.rttvar + BETA * \
+            abs(self.srtt - rtt_muestra)
+        self.rto = max(self.srtt + 4 * self.rttvar, 0.1)
+        return self.rto
+
+    def on_timeout(self):
+        # backoff exponencial, para aumentar el tiempo de espera después
+        # de cada timeout, con un límite máximo de 60 segundos
+        self.rto = min(self.rto * 2, SEC_TIMEOUT_LIMIT)
+        return self.rto
 
 class Protocol:
     def __init__(self, verbose: bool = False, quiet: bool = False):
@@ -54,7 +72,7 @@ class Protocol:
         raise ConnectionError("Failed to establish connection.")
 
     def _teardown_sender(self, sock: socket.socket, seq_num: int,
-                         timeout_var) -> None:
+                         timeout_var: TimeoutVariable) -> None:
         self.log("SENDER: Starting teardown...", is_verbose=True)
 
         while True:
@@ -82,7 +100,7 @@ class Protocol:
         self.log("SENDER: Teardown complete.", is_verbose=True)
 
     def _teardown_recv(self, sock: socket.socket, expected_seq: int,
-                       timeout_var) -> None:
+                       timeout_var: TimeoutVariable) -> None:
         self.log("RECEIVER: Starting teardown...", is_verbose=True)
 
         sock.send(pickle.dumps(

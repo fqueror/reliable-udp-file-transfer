@@ -6,8 +6,16 @@ UPLOAD = "upload"
 START_SERVER = "start-server"
 
 # Protocol
-MTU = 5000
-MAX_PAYLOAD_SIZE = 4500
+# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
+# as to avoid fragmentation in lower Internet layers.
+MTU = 1500
+# An MSS is the Maximum Segment Size, though it defines the maximum payload
+# size. According to Kurose's book, 1460 bytes is its typical value.
+# TODO Since we use `Segment`, our header is larger than 40 bytes, and we then
+# TODO must use an MSS lower than the typical. However, we should use the
+# TODO highest possible one within that range. For now, 1300 does the job, but
+# TODO we must check if it is the best possible value.
+MAX_PAYLOAD_SIZE = 1350
 MAX_TIMEOUT_HANDSHAKE = 10
 STOP_AND_WAIT = "stop-and-wait"
 GO_BACK_N = "go-back-n"
