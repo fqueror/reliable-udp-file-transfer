@@ -13,11 +13,11 @@ class Segment:
     """
 
     def __init__(self, seq_num: int = 0, ack_num: int = 0,
+                 syn_flag: bool = False,
                  ack_flag: bool = False,
                  fin_flag: bool = False,
-                 error_flag: bool = False,
                  payload: bytes = b""):
         self.seq_num = seq_num
         self.ack_num = ack_num
-        self.flags = {ACK: ack_flag, FIN: fin_flag, ERR: error_flag}
+        self.flags = {"SYN": syn_flag,ACK: ack_flag, FIN: fin_flag, ERR: error_flag}
         self.payload = payload

@@ -1,4 +1,6 @@
 from lib.parser import get_args, validate_args
+from lib.protocol import TIMEOUT
+from lib.parser import get_args
 import socket
 import os
 
@@ -9,6 +11,7 @@ if __name__ == "__main__":
     protocol = validate_args(args)
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client_socket.settimeout(TIMEOUT)
     file_path = os.path.join(args.dst, args.name)
 
     try:
