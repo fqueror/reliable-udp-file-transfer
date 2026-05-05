@@ -21,7 +21,6 @@ if __name__ == "__main__":
         print(DIRECTORY_NOT_FOUND)
     except ConnectionError as e:
         print(f"Connection error: {e}")
-        print("Deleting partially downloaded file...")
         if os.path.exists(file_path):
             os.remove(file_path)
 

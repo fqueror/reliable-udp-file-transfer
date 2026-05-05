@@ -3,7 +3,7 @@ import pickle
 import socket
 import time
 
-from lib.protocol.protocol import Protocol, TimeoutVariable
+from lib.protocol.protocol import Protocol
 from lib.segment import Segment
 from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, STOP_AND_WAIT, ACK, ERR, FIN
 
