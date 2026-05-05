@@ -1,13 +1,11 @@
 from lib.metadata import Metadata, OP_UPLOAD, OP_DOWNLOAD
-from lib.protocol import Protocol, MTU
+from lib.protocol import Protocol, MTU, TIMEOUT
 from lib.segment import Segment
 import threading
 import argparse
 import socket
 import pickle
 import os
-
-TIMEOUT = 0.1
 
 
 class Server:
@@ -26,7 +24,6 @@ class Server:
 
         try:
             while True:
-                connection_socket.settimeout(TIMEOUT)
                 connection_socket.send(pickle.dumps(
                     Segment(ack_flag=True, syn_flag=True, seq_num=0,
                             ack_num=1)))
@@ -79,6 +76,7 @@ class Server:
 
                     connection_socket = socket.socket(
                         socket.AF_INET, socket.SOCK_DGRAM)
+                    connection_socket.settimeout(TIMEOUT)
                     connection_socket.connect(client_addr)
                     self._clients_in_progress[client_addr] = connection_socket
 

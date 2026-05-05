@@ -7,9 +7,7 @@ from mininet.cli import CLI
 
 
 class MultipleHostsOneSwitch(Topo):
-    # TODO Debemos lograr tener _loss_ de 10% y subir/bajar archivos de 5MBs en
-    # TODO menos de 2 mins.
-    def build(self, loss=0):
+    def build(self):
         switch = self.addSwitch('s1')  # Create a switch.
 
         # Create two hosts:
@@ -18,16 +16,15 @@ class MultipleHostsOneSwitch(Topo):
         client2 = self.addHost('client2')
 
         # Connect hosts to the switch:
-        self.addLink(server, switch, cls=TCLink)
-        self.addLink(client1, switch, cls=TCLink, loss=loss)
-        self.addLink(client2, switch, cls=TCLink, loss=loss)
+        self.addLink(server, switch, cls=TCLink, loss=10)
+        self.addLink(client1, switch, cls=TCLink)
+        self.addLink(client2, switch, cls=TCLink)
 
 
 if __name__ == '__main__':
     setLogLevel('info')
 
-    net = Mininet(topo=MultipleHostsOneSwitch(loss=5.1),
-                  controller=OVSController,
+    net = Mininet(topo=MultipleHostsOneSwitch(), controller=OVSController,
                   link=TCLink)
     net.start()
 

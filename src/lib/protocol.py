@@ -10,35 +10,15 @@ import io
 # as to avoid fragmentation in lower Internet layers.
 MTU = 1500
 # An MSS is the Maximum Segment Size, though it defines the maximum payload
-# size. According to Kurose's book, 1460 bytes is its typical value.
-# TODO Since we use `Segment`, our header is larger than 40 bytes, and we then
-# TODO must use an MSS lower than the typical. However, we should use the
-# TODO highest possible one within that range. For now, 1300 does the job, but
-# TODO we must check if it is the best possible value.
+# size. According to Kurose's book, 1460 bytes is its typical value, but we use
+# less than that since out segment's header uses more than 40 bytes.
+# TODO We should keep it in the highest possible value.
 MAX_PAYLOAD_SIZE = 1350
+
 MAX_RETRIES = 5
-
-
-class TimeoutVariable():
-    def __init__(self):
-        self.srtt = 0.05
-        self.rttvar = 0.01
-        self.rto = 0.1
-
-    def update(self, rtt_muestra):
-        alpha = 0.125
-        beta = 0.25
-        self.srtt = (1 - alpha) * self.srtt + alpha * rtt_muestra
-        self.rttvar = (1 - beta) * self.rttvar + beta * \
-            abs(self.srtt - rtt_muestra)
-        self.rto = max(self.srtt + 4 * self.rttvar, 0.1)
-        return self.rto
-
-    def on_timeout(self):
-        # backoff exponencial, para aumentar el tiempo de espera después
-        # de cada timeout, con un límite máximo de 60 segundos
-        self.rto = min(self.rto * 2, 60)
-        return self.rto
+# After trying different values, this is the one that got us the best
+# performance:
+TIMEOUT = 0.05
 
 
 class Protocol:
@@ -55,8 +35,6 @@ class Protocol:
 
     def _handshake(self, origin: socket.socket, dest: tuple[str, int],
                    operation: str, filename: str):
-        timeout_var = TimeoutVariable()
-        origin.settimeout(timeout_var.rto)
         while True:
             try:
                 origin.sendto(pickle.dumps(
@@ -80,8 +58,7 @@ class Protocol:
             except socket.timeout:
                 continue
 
-    def _teardown_sender(self, sock: socket.socket, seq_num: int,
-                         timeout_var: TimeoutVariable) -> None:
+    def _teardown_sender(self, sock: socket.socket, seq_num: int) -> None:
         while True:
             sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=seq_num)))
             try:
@@ -96,7 +73,6 @@ class Protocol:
                     return
 
             except socket.timeout:
-                sock.settimeout(timeout_var.on_timeout())
                 continue
 
         retries = 0
@@ -109,12 +85,10 @@ class Protocol:
                     break
 
             except socket.timeout:
-                sock.settimeout(timeout_var.on_timeout())
                 retries += 1
                 continue
 
-    def _teardown_recv(self, sock: socket.socket, expected_seq: int,
-                       timeout_var: TimeoutVariable) -> None:
+    def _teardown_recv(self, sock: socket.socket, expected_seq: int) -> None:
         sock.send(pickle.dumps(
             Segment(ack_flag=True, ack_num=expected_seq)))
         retries = 0
@@ -127,7 +101,6 @@ class Protocol:
                 if reply.flags["ACK"] and reply.ack_num == expected_seq:
                     break
             except socket.timeout:
-                sock.settimeout(timeout_var.on_timeout())
                 retries += 1
                 continue
 
@@ -139,14 +112,11 @@ class StopAndWait(Protocol):
         return "Stop And Wait"
 
     def send_file(self, origin: socket.socket, file: io.BufferedReader):
-        timeout_var = TimeoutVariable()
-        origin.settimeout(timeout_var.rto)
         seq = 0
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
                 origin.send(pickle.dumps(Segment(seq_num=seq, payload=chunk)))
                 try:
-                    t_inicio = time.time()
                     reply = self._recv_segment(origin)
 
                     # llega retrasmisión.
@@ -156,33 +126,22 @@ class StopAndWait(Protocol):
                         continue
 
                     if reply.flags["ACK"] and reply.ack_num == seq:
-                        rtt_muestra = time.time() - t_inicio
-                        origin.settimeout(timeout_var.update(rtt_muestra))
                         seq = 1 - seq
                         break
                 except socket.timeout:
-                    origin.settimeout(timeout_var.on_timeout())
                     continue
 
-        # teardown begins
-        self._teardown_sender(origin, seq, timeout_var)
+        self._teardown_sender(origin, seq)
 
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
-        timeout_var = TimeoutVariable()
-        origin.settimeout(timeout_var.rto)
         expected_seq = 0
         while True:
-            try:
-                segment = self._recv_segment(origin)
+            segment = self._recv_segment(origin)
 
-                # parche por si el último ACK del Handshake se pierde
-                if segment.flags["SYN"]:
-                    origin.send(pickle.dumps(
-                        Segment(ack_flag=True, ack_num=1, seq_num=1)))
-                    continue
-
-            except socket.timeout:
-                origin.settimeout(timeout_var.on_timeout())
+            # parche por si el último ACK del Handshake se pierde
+            if segment.flags["SYN"]:
+                origin.send(pickle.dumps(
+                    Segment(ack_flag=True, ack_num=1, seq_num=1)))
                 continue
 
             if segment.seq_num != expected_seq:
@@ -191,7 +150,7 @@ class StopAndWait(Protocol):
                 continue
 
             if segment.flags["FIN"]:
-                self._teardown_recv(origin, expected_seq, timeout_var)
+                self._teardown_recv(origin, expected_seq)
                 break
 
             file.write(segment.payload)
@@ -230,8 +189,6 @@ class GoBackN(Protocol):
 
         total_packets = len(chunks)
         sock.setblocking(False)
-        timeout_manager = TimeoutVariable()
-        start_time = time.time()
 
         while base < total_packets:
             while next_seq_num < base + window_size and \
@@ -244,13 +201,14 @@ class GoBackN(Protocol):
                 next_seq_num += 1
 
             current_time = time.time()
-            time_left = max(0.0, timeout_manager.rto -
+            time_left = max(0.0, TIMEOUT -
                             (current_time - start_time))
             ready, _, _ = select.select([sock], [], [], time_left)
 
             if ready:
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
+                    start_time = time.time()
 
                     if ack_packet.flags["SYN"]:
                         sock.send(pickle.dumps(
@@ -258,23 +216,17 @@ class GoBackN(Protocol):
                         continue
 
                     if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:
-                        sample_rtt = time.time() - start_time
-                        timeout_manager.update(sample_rtt)
                         base = ack_packet.ack_num + 1
-                        start_time = time.time()
                 except Exception:
                     pass
             else:
                 next_seq_num = base
-                start_time = time.time()
 
         sock.setblocking(True)
-        sock.settimeout(timeout_manager.rto)
-        self._teardown_sender(sock, base, timeout_manager)
+        self._teardown_sender(sock, base)
 
     def recv_file(self, sock: socket.socket, file: io.BufferedWriter):
         expected_seq_num = 0
-        timeout_manager = TimeoutVariable()
 
         while True:
             try:
@@ -302,7 +254,7 @@ class GoBackN(Protocol):
             except Exception:
                 continue
 
-        self._teardown_recv(sock, expected_seq_num, timeout_manager)
+        self._teardown_recv(sock, expected_seq_num)
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):
