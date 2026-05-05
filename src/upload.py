@@ -2,24 +2,25 @@ from lib.parser import get_args, validate_args
 import socket
 
 from lib.protocol.protocol import Protocol
+from lib.settings import UPLOAD, FILE_READER, FILE_NOT_FOUND, PERMISSION_DENIED, FILE_PATH_NOT_SPECIFIED
 
 if __name__ == "__main__":
-    args = get_args("upload")
+    args = get_args(UPLOAD)
 
     protocol = validate_args(args)
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     try:
-        with open(args.src, "rb") as file:
+        with open(args.src, FILE_READER) as file:
             protocol.client_send(client_socket, (args.host, args.port), file,
                                  args.name)
     except FileNotFoundError:
-        print("File not found.")
+        print(FILE_NOT_FOUND)
     except PermissionError:
-        print("Permission denied.")
+        print(PERMISSION_DENIED)
     except TypeError:
-        print("Filepath not specified.")
+        print(FILE_PATH_NOT_SPECIFIED)
     except ConnectionError as e:
         print(f"Connection error: {e}")
 

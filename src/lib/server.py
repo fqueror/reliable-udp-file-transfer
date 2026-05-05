@@ -1,6 +1,6 @@
 from lib.metadata import Metadata
 from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, \
-    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND
+    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK
 from lib.protocol.protocol import Protocol, MTU
 from lib.segment import Segment
 import threading
@@ -65,7 +65,7 @@ class Server:
                     try:
                         connection_socket.send(pickle.dumps(segment))
                         ack = pickle.loads(connection_socket.recv(MTU))
-                        if ack.flags["ACK"]:
+                        if ack.flags[ACK]:
                             self.log(
                                 f"File not found. Client {addr} notified.")
                             break
@@ -75,9 +75,9 @@ class Server:
 
     def start(self):
         self.log(
-            f"[INICIANDO] Servidor en {
+            f"[SERVER] Running server in {
                 self.host}:{
-                self.port} y almacenando en {
+                self.port} and storing in path {
                 self.storage}")
         try:
             while True:
@@ -92,4 +92,4 @@ class Server:
 
         except KeyboardInterrupt:
             self.welcoming_socket.close()
-            self.log("\n[APAGANDO] Cerrando el servidor de forma segura...")
+            self.log("\n[SERVER] Closing server.")

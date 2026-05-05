@@ -5,11 +5,11 @@ import time
 
 from lib.protocol.protocol import Protocol, TimeoutVariable
 from lib.segment import Segment
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD
+from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, STOP_AND_WAIT, ACK, ERR, FIN
 
 
 class StopAndWait(Protocol):
-    ID = "stop-and-wait"
+    ID = STOP_AND_WAIT
 
     def __repr__(self):
         return "Stop And Wait"
@@ -30,7 +30,7 @@ class StopAndWait(Protocol):
                     t_inicio = time.time()
                     reply = self._recv_segment(origin)
 
-                    if reply.flags["ACK"] and reply.ack_num == seq:
+                    if reply.flags[ACK] and reply.ack_num == seq:
                         self.log(
                             f"SENDER: Received ACK {seq}",
                             is_verbose=True)
@@ -67,11 +67,11 @@ class StopAndWait(Protocol):
                     Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue
 
-            if segment.flags["ERR"]:
+            if segment.flags[ERR]:
                 origin.send(pickle.dumps(Segment(ack_flag=True)))
                 raise ConnectionError(pickle.loads(segment.payload))
 
-            if segment.flags["FIN"]:
+            if segment.flags[FIN]:
                 self.log("RECEIVER: FIN received.")
                 self._teardown_recv(origin, expected_seq, timeout_var)
                 break

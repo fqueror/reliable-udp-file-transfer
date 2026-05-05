@@ -1,3 +1,6 @@
+from lib.settings import ACK, FIN, ERR
+
+
 class Segment:
     """
     We use a Python class to construct the segment because it is easier to
@@ -16,5 +19,5 @@ class Segment:
                  payload: bytes = b""):
         self.seq_num = seq_num
         self.ack_num = ack_num
-        self.flags = {"ACK": ack_flag, "FIN": fin_flag, "ERR": error_flag}
+        self.flags = {ACK: ack_flag, FIN: fin_flag, ERR: error_flag}
         self.payload = payload

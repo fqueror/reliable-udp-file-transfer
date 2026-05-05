@@ -5,18 +5,18 @@ import pickle
 import select
 
 from lib.protocol.protocol import Protocol, TimeoutVariable
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD
+from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, GO_BACK_N, WINDOW_SIZE, ACK, ERR, FIN
 from lib.segment import Segment
 
 
 class GoBackN(Protocol):
-    ID = "go-back-n"
+    ID = GO_BACK_N
 
     def __repr__(self):
         return "Go Back N"
 
     def send_file(self, sock: socket.socket, file: io.BufferedReader):
-        window_size = 10
+        window_size = WINDOW_SIZE
         base = 0
         next_seq_num = 0
 
@@ -56,7 +56,7 @@ class GoBackN(Protocol):
             if ready:
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
-                    if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:
+                    if ack_packet.flags[ACK] and ack_packet.ack_num >= base:
                         self.log(
                             f"SENDER: Received ACK {
                                 ack_packet.ack_num}",
@@ -86,11 +86,11 @@ class GoBackN(Protocol):
                 sock.settimeout(None)
                 segment: Segment = self._recv_segment(sock)
 
-                if segment.flags["ERR"]:
+                if segment.flags[ERR]:
                     sock.send(pickle.dumps(Segment(ack_flag=True)))
                     raise ConnectionError(pickle.loads(segment.payload))
 
-                if segment.flags["FIN"] and \
+                if segment.flags[FIN] and \
                         segment.seq_num == expected_seq_num:
                     break
 
@@ -109,8 +109,7 @@ class GoBackN(Protocol):
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num - 1)))
             except ConnectionError as e:
-                print(f"Connection error: {e}")
-                return
+                raise e
             except Exception as e:
                 print(f"Error: {e}")
                 continue

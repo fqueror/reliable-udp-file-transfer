@@ -2,8 +2,10 @@ import argparse
 import pathlib
 
 from lib.protocol.protocol import Protocol
+# No borrar estos imports
 from lib.protocol.go_back_n import GoBackN
 from lib.protocol.stop_and_wait import StopAndWait
+from lib.settings import STOP_AND_WAIT, GO_BACK_N, UPLOAD, DOWNLOAD, START_SERVER
 
 
 class SpacedHelpFormatter(argparse.HelpFormatter):
@@ -24,17 +26,17 @@ def get_args(prog: str) -> argparse.Namespace:
     verbosity_group.add_argument("-q", "--quiet", action="store_true",
                                  help="decrease output verbosity")
 
-    if prog == "upload" or prog == "download":
+    if prog == UPLOAD or prog == DOWNLOAD:
         parser.add_argument("-H", "--host", metavar="ADDR", action="store",
                             help="server IP address")
         parser.add_argument("-p", "--port", action="store", type=int,
                             help="server port")
 
-        if prog == "upload":
+        if prog == UPLOAD:
             parser.add_argument("-s", "--src", metavar="FILEPATH",
                                 action="store", type=pathlib.Path,
                                 help="source file path")
-        elif prog == "download":
+        elif prog == DOWNLOAD:
             parser.add_argument("-d", "--dst", metavar="FILEPATH",
                                 action="store", type=pathlib.Path,
                                 default=pathlib.Path("."),
@@ -48,11 +50,11 @@ def get_args(prog: str) -> argparse.Namespace:
             metavar="PROTOCOL",
             action="store",
             choices=[
-                "stop-and-wait",
-                "go-back-n"],
+                STOP_AND_WAIT,
+                GO_BACK_N],
             help="error recovery protocol.")
 
-    elif prog == "start-server":
+    elif prog == START_SERVER:
         parser.add_argument("-H", "--host", metavar="ADDR", action="store",
                             default="0.0.0.0", help="service IP address")
         parser.add_argument("-p", "--port", action="store", type=int,

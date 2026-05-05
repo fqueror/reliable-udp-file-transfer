@@ -1,4 +1,4 @@
-from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE
+from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, SRTT, RTTVAR, RTO, ALPHA, BETA, SEC_TIMEOUT_LIMIT
 from lib.metadata import Metadata
 from lib.segment import Segment
 import socket
@@ -44,12 +44,12 @@ class Protocol:
                 q_bytes_received, dest = origin.recvfrom_into(bytes_received)
                 origin.connect(dest)
                 if pickle.loads(
-                        bytes_received[:q_bytes_received]).flags["ACK"]:
+                        bytes_received[:q_bytes_received]).flags[ACK]:
                     return
             except socket.timeout:
                 self.log(
-                    f"Intento {
-                        attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} fallido. Reintentando...")
+                    f"Attempt {
+                        attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} failed. Retrying...")
 
         raise ConnectionError("Failed to establish connection.")
 
@@ -61,7 +61,7 @@ class Protocol:
             sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=seq_num)))
             try:
                 reply = self._recv_segment(sock)
-                if reply.flags["ACK"] and reply.ack_num == seq_num:
+                if reply.flags[ACK] and reply.ack_num == seq_num:
                     break
             except socket.timeout:
                 sock.settimeout(timeout_var.on_timeout())
@@ -70,7 +70,7 @@ class Protocol:
         while True:
             try:
                 reply = self._recv_segment(sock)
-                if reply.flags["FIN"]:
+                if reply.flags[FIN]:
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=reply.seq_num)))
                     break
@@ -93,7 +93,7 @@ class Protocol:
                 Segment(fin_flag=True, seq_num=expected_seq)))
             try:
                 reply = self._recv_segment(sock)
-                if reply.flags["ACK"] and reply.ack_num == expected_seq:
+                if reply.flags[ACK] and reply.ack_num == expected_seq:
                     break
             except socket.timeout:
                 timeout_var.on_timeout()
@@ -104,15 +104,13 @@ class Protocol:
 
 class TimeoutVariable():
     def __init__(self):
-        self.srtt = 0.05
-        self.rttvar = 0.01
-        self.rto = 0.1
+        self.srtt = SRTT
+        self.rttvar = RTTVAR
+        self.rto = RTO
 
     def update(self, rtt_muestra):
-        alpha = 0.125
-        beta = 0.25
-        self.srtt = (1 - alpha) * self.srtt + alpha * rtt_muestra
-        self.rttvar = (1 - beta) * self.rttvar + beta * \
+        self.srtt = (1 - ALPHA) * self.srtt + ALPHA * rtt_muestra
+        self.rttvar = (1 - BETA) * self.rttvar + BETA * \
             abs(self.srtt - rtt_muestra)
         self.rto = max(self.srtt + 4 * self.rttvar, 0.1)
         return self.rto
@@ -120,5 +118,5 @@ class TimeoutVariable():
     def on_timeout(self):
         # backoff exponencial, para aumentar el tiempo de espera después
         # de cada timeout, con un límite máximo de 60 segundos
-        self.rto = min(self.rto * 2, 60)
+        self.rto = min(self.rto * 2, SEC_TIMEOUT_LIMIT)
         return self.rto
