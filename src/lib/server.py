@@ -1,13 +1,12 @@
-from lib.metadata import Metadata, OP_UPLOAD, OP_DOWNLOAD
-from lib.protocol import Protocol, MTU
+from lib.metadata import Metadata
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS
+from lib.protocol.protocol import Protocol, MTU
 from lib.segment import Segment
 import threading
 import argparse
 import socket
 import pickle
 import os
-
-MAX_ATTEMPTS = 3
 
 class Server:
     def __init__(self, args: argparse.Namespace):

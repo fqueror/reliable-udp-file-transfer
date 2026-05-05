@@ -1,6 +1,3 @@
-OP_UPLOAD = "UPLOAD"
-OP_DOWNLOAD = "DOWNLOAD"
-
 
 class Metadata:
     # TODO Acá va a estar bueno si podemos pasarle un `Operation` y `Protocol`,

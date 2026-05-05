@@ -1,7 +1,7 @@
 from lib.parser import get_args, validate_args
 import socket
 
-from lib.protocol import Protocol
+from lib.protocol.protocol import Protocol
 
 if __name__ == "__main__":
     args = get_args("upload")

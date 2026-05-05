@@ -1,6 +1,9 @@
-from .protocol import Protocol
 import argparse
 import pathlib
+
+from lib.protocol.protocol import Protocol
+from lib.protocol.go_back_n import GoBackN
+from lib.protocol.stop_and_wait import StopAndWait
 
 
 class SpacedHelpFormatter(argparse.HelpFormatter):
