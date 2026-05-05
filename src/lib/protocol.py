@@ -12,6 +12,17 @@ MAX_TIMEOUT_HANDSHAKE = 10
 
 
 class Protocol:
+    def __init__(self, verbose: bool = False, quiet: bool = False):
+        self.verbose = verbose
+        self.quiet = quiet
+
+    def log(self, message: str, is_verbose: bool = False):
+        if self.quiet:
+            return
+        if is_verbose and not self.verbose:
+            return
+        print(message)
+
     @classmethod
     def from_str(cls, str):
         for subclass in cls.__subclasses__():
@@ -42,12 +53,14 @@ class Protocol:
                         bytes_received[:q_bytes_received]).flags["ACK"]:
                     return
             except socket.timeout:
-                print(f"Intento {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} fallido. Reintentando...")
+                self.log(f"Intento {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} fallido. Reintentando...")
 
         raise ConnectionError("Failed to establish connection.")
 
     def _teardown_sender(self, sock: socket.socket, seq_num: int,
                          timeout_var) -> None:
+        self.log("SENDER: Starting teardown...", is_verbose=True)
+
         while True:
             sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=seq_num)))
             try:
@@ -70,8 +83,12 @@ class Protocol:
                 sock.settimeout(timeout_var.on_timeout())
                 continue
 
+        self.log("SENDER: Teardown complete.", is_verbose=True)
+
     def _teardown_recv(self, sock: socket.socket, expected_seq: int,
                        timeout_var) -> None:
+        self.log("RECEIVER: Starting teardown...", is_verbose=True)
+
         sock.send(pickle.dumps(
             Segment(ack_flag=True, ack_num=expected_seq)))
 
@@ -86,6 +103,8 @@ class Protocol:
                 timeout_var.on_timeout()
                 continue
 
+        self.log("RECEIVER: Teardown complete.", is_verbose=True)
+
 
 class StopAndWait(Protocol):
     ID = "stop-and-wait"
@@ -97,28 +116,38 @@ class StopAndWait(Protocol):
         timeout_var = TimeoutVariable()
         origin.settimeout(timeout_var.rto)
         seq = 0
+
+        self.log("SENDER: Starting transfer with Stop & Wait.")
+
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
                 origin.send(pickle.dumps(Segment(seq_num=seq, payload=chunk)))
+                self.log(f"SENDER: Sent packet {seq}", is_verbose=True)
+
                 try:
                     t_inicio = time.time()
                     reply = self._recv_segment(origin)
+
                     if reply.flags["ACK"] and reply.ack_num == seq:
+                        self.log(f"SENDER: Received ACK {seq}", is_verbose=True)
                         rtt_muestra = time.time() - t_inicio
                         origin.settimeout(timeout_var.update(rtt_muestra))
                         seq = 1 - seq
                         break
                 except socket.timeout:
+                    self.log(f"SENDER: Timeout! Resending packet {seq}")
                     origin.settimeout(timeout_var.on_timeout())
                     continue
 
-        # teardown begins
         self._teardown_sender(origin, seq, timeout_var)
 
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
         timeout_var = TimeoutVariable()
         origin.settimeout(timeout_var.rto)
         expected_seq = 0
+
+        self.log("RECEIVER: Ready to receive data with Stop & Wait.")
+
         while True:
             try:
                 segment = self._recv_segment(origin)
@@ -127,6 +156,8 @@ class StopAndWait(Protocol):
                 continue
 
             if segment.seq_num != expected_seq:
+                self.log(f"RECEIVER: Wrong sequence number. Expected {expected_seq}, got {segment.seq_num}",
+                         is_verbose=True)
                 origin.send(pickle.dumps(
                     Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue
@@ -136,10 +167,12 @@ class StopAndWait(Protocol):
                 raise ConnectionError(pickle.loads(segment.payload))
 
             if segment.flags["FIN"]:
+                self.log("RECEIVER: FIN received.")
                 self._teardown_recv(origin, expected_seq, timeout_var)
                 break
 
             file.write(segment.payload)
+            self.log(f"RECEIVER: Got packet {expected_seq}", is_verbose=True)
             origin.send(pickle.dumps(
                 Segment(ack_flag=True, ack_num=expected_seq)))
             expected_seq = 1 - expected_seq
@@ -178,12 +211,15 @@ class GoBackN(Protocol):
         timeout_manager = TimeoutVariable()
         start_time = time.time()
 
+        self.log(f"SENDER: Starting transfer of {total_packets} packets with Go-Back-N.")
+
         while base < total_packets:
             while next_seq_num < base + window_size and \
                     next_seq_num < total_packets:
                 packet = Segment(seq_num=next_seq_num,
                                  payload=chunks[next_seq_num])
                 sock.send(pickle.dumps(packet))
+                self.log(f"SENDER: Sent packet {next_seq_num}", is_verbose=True)
                 if base == next_seq_num:
                     start_time = time.time()
                 next_seq_num += 1
@@ -197,6 +233,7 @@ class GoBackN(Protocol):
                 try:
                     ack_packet: Segment = self._recv_segment(sock)
                     if ack_packet.flags["ACK"] and ack_packet.ack_num >= base:
+                        self.log(f"SENDER: Received ACK {ack_packet.ack_num}", is_verbose=True)
                         sample_rtt = time.time() - start_time
                         timeout_manager.update(sample_rtt)
                         base = ack_packet.ack_num + 1
@@ -204,6 +241,7 @@ class GoBackN(Protocol):
                 except Exception:
                     pass
             else:
+                self.log(f"SENDER: Timeout! Resending from {base}")
                 next_seq_num = base
                 start_time = time.time()
 
@@ -214,6 +252,7 @@ class GoBackN(Protocol):
     def recv_file(self, sock: socket.socket, file: io.BufferedWriter):
         expected_seq_num = 0
         timeout_manager = TimeoutVariable()
+        self.log("RECEIVER: Ready to receive data with Go-Back-N.")
 
         while True:
             try:
@@ -226,10 +265,13 @@ class GoBackN(Protocol):
 
                 if segment.seq_num == expected_seq_num:
                     file.write(segment.payload)
+                    self.log(f"RECEIVER: Got packet {expected_seq_num}", is_verbose=True)
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num)))
                     expected_seq_num += 1
                 else:
+                    self.log(f"RECEIVER: Out of order. Expected {expected_seq_num}, got {segment.seq_num}",
+                             is_verbose=True)
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num - 1)))
             except Exception:

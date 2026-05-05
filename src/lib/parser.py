@@ -68,4 +68,8 @@ def validate_args(args: argparse.Namespace):
         print("Host and port must be specified.")
         exit(1)
 
-    return Protocol.from_str(args.protocol)
+    protocol = Protocol.from_str(args.protocol)
+    protocol.verbose = args.verbose
+    protocol.quiet = args.quiet
+
+    return protocol

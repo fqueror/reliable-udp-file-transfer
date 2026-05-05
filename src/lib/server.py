@@ -14,6 +14,8 @@ class Server:
         self.host = None
         self.port = None
         self.storage = None
+        self.verbose = args.verbose
+        self.quiet = args.quiet
 
         self.config_server(args)
 
@@ -28,14 +30,24 @@ class Server:
         self.storage = args.storage or "./storage"
         os.makedirs(self.storage, exist_ok=True)
 
+    def log(self, message: str, is_verbose: bool = False):
+        if self.quiet:
+            return
+        if is_verbose and not self.verbose:
+            return
+        print(message)
+
     def handle_client(self, metadata: Metadata, addr: str):
-        print(f"[NUEVO HILO] Atendiendo a {addr}")
+        self.log(f"[NUEVO HILO] Atendiendo a {addr}")
         connection_socket = socket.socket(socket.AF_INET,
                                           socket.SOCK_DGRAM)
         connection_socket.connect(addr)
         connection_socket.send(pickle.dumps(Segment(ack_flag=True)))
 
         protocol = Protocol.from_str(metadata.protocol)
+        protocol.verbose = self.verbose
+        protocol.quiet = self.quiet
+
         path = os.path.join(self.storage, str(metadata.filename))
 
         if metadata.operation == OP_UPLOAD:
@@ -52,7 +64,7 @@ class Server:
                         connection_socket.send(pickle.dumps(segment))
                         ack = pickle.loads(connection_socket.recv(MTU))
                         if ack.flags["ACK"]:
-                            print(f"File not found. Client {addr} notified.")
+                            self.log(f"File not found. Client {addr} notified.")
                             break
                     except socket.timeout:
                         continue
@@ -60,11 +72,7 @@ class Server:
 
 
     def start(self):
-        print(
-            f"[INICIANDO] Servidor en {
-                self.host}:{
-                self.port} y almacenando en {
-                self.storage}")
+        self.log(f"[INICIANDO] Servidor en {self.host}:{self.port} y almacenando en {self.storage}")
         try:
             while True:
                 encoded_segment, client_addr = self.welcoming_socket.recvfrom(
@@ -78,4 +86,4 @@ class Server:
 
         except KeyboardInterrupt:
             self.welcoming_socket.close()
-            print("\n[APAGANDO] Cerrando el servidor de forma segura...")
+            self.log("\n[APAGANDO] Cerrando el servidor de forma segura...")
