@@ -1,9 +1,22 @@
-from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, MAX_RETRIES, \
-    SYN, FAILED_TO_ESTABLISH_CONNECTION, MEDIUM_VERBOSITY, HIGH_VERBOSITY
+from lib.settings import FAILED_TO_ESTABLISH_CONNECTION, MEDIUM_VERBOSITY, \
+    HIGH_VERBOSITY
+from lib.segment import Segment, SYN, ACK, FIN
 from lib.metadata import Metadata
-from lib.segment import Segment
 import socket
 import pickle
+
+# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
+# as to avoid fragmentation in lower Internet layers.
+MTU = 1500
+# An MSS is the Maximum Segment Size, though it defines the maximum payload
+# size. According to Kurose's book, 1460 bytes is its typical value, but we use
+# less than that since out segment's header uses more than 40 bytes.
+# TODO We should keep it in the highest possible value.
+MAX_PAYLOAD_SIZE = 1350
+
+TIMEOUT = 0.05
+MAX_TIMEOUT_HANDSHAKE = 10
+MAX_RETRIES = 5
 
 class Protocol:
     def __init__(self):

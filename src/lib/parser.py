@@ -1,12 +1,10 @@
-from lib.settings import STOP_AND_WAIT, GO_BACK_N, UPLOAD, DOWNLOAD, \
-    START_SERVER, LOW_VERBOSITY, HIGH_VERBOSITY
+from lib.settings import UPLOAD, DOWNLOAD, START_SERVER, LOW_VERBOSITY, \
+    HIGH_VERBOSITY
+from lib.protocol.stop_and_wait import STOP_AND_WAIT_ID
+from lib.protocol.go_back_n import GO_BACK_N_ID
 from lib.protocol.protocol import Protocol
 import argparse
 import pathlib
-
-# No borrar estos imports
-from lib.protocol.go_back_n import GoBackN
-from lib.protocol.stop_and_wait import StopAndWait
 
 
 class SpacedHelpFormatter(argparse.HelpFormatter):
@@ -45,15 +43,10 @@ def get_args(prog: str) -> argparse.Namespace:
 
         parser.add_argument("-n", "--name", metavar="FILENAME", action="store",
                             help="file name")
-        parser.add_argument(
-            "-r",
-            "--protocol",
-            metavar="PROTOCOL",
-            action="store",
-            choices=[
-                STOP_AND_WAIT,
-                GO_BACK_N],
-            help="error recovery protocol.")
+        parser.add_argument("-r", "--protocol", metavar="PROTOCOL",
+                            action="store", choices=[STOP_AND_WAIT_ID,
+                                                     GO_BACK_N_ID],
+                            help="error recovery protocol.")
 
     elif prog == START_SERVER:
         parser.add_argument("-H", "--host", metavar="ADDR", action="store",
@@ -67,10 +60,6 @@ def get_args(prog: str) -> argparse.Namespace:
 
 
 def validate_args(args: argparse.Namespace):
-    if args.protocol is None:
-        print("Protocol not specified.")
-        exit(1)
-
     if args.host is None or args.port is None:
         print("Host and port must be specified.")
         exit(1)

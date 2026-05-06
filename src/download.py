@@ -1,5 +1,6 @@
-from lib.settings import DOWNLOAD, FILE_WRITER, DIRECTORY_NOT_FOUND, TIMEOUT
+from lib.settings import DOWNLOAD, WRITE_IN_BINARY_MODE, DIRECTORY_NOT_FOUND
 from lib.parser import get_args, validate_args
+from lib.protocol.protocol import TIMEOUT
 import socket
 import os
 
@@ -12,7 +13,7 @@ if __name__ == "__main__":
     file_path = os.path.join(args.dst, args.name)
 
     try:
-        with open(file_path, FILE_WRITER) as file:
+        with open(file_path, WRITE_IN_BINARY_MODE) as file:
             protocol.client_recv(client_socket, (args.host, args.port), file,
                                  args.name)
     except FileNotFoundError:

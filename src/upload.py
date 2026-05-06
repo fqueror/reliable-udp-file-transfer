@@ -1,5 +1,6 @@
-from lib.settings import UPLOAD, FILE_READER, FILE_NOT_FOUND, \
-    PERMISSION_DENIED, FILE_PATH_NOT_SPECIFIED, TIMEOUT
+from lib.settings import UPLOAD, READ_IN_BINARY_MODE, FILE_NOT_FOUND, \
+    PERMISSION_DENIED, FILE_PATH_NOT_SPECIFIED
+from lib.protocol.protocol import TIMEOUT
 from lib.parser import get_args, validate_args
 import socket
 
@@ -13,7 +14,7 @@ if __name__ == "__main__":
     client_socket.settimeout(TIMEOUT)
 
     try:
-        with open(args.src, FILE_READER) as file:
+        with open(args.src, READ_IN_BINARY_MODE) as file:
             protocol.client_send(client_socket, (args.host, args.port), file,
                                  args.name)
     except FileNotFoundError:

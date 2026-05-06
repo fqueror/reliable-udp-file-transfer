@@ -1,22 +1,22 @@
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, GO_BACK_N, \
-    WINDOW_SIZE, ACK, ERR, FIN, TIMEOUT, SYN, HIGH_VERBOSITY
-from lib.protocol.protocol import Protocol
-from lib.segment import Segment
+from lib.protocol.protocol import Protocol, MAX_PAYLOAD_SIZE, TIMEOUT
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, HIGH_VERBOSITY
+from lib.segment import Segment, SYN, ACK, FIN, ERR
 import socket
 import pickle
 import select
 import time
 import io
 
+GO_BACK_N_ID = "go-back-n"
 
 class GoBackN(Protocol):
-    ID = GO_BACK_N
+    ID = GO_BACK_N_ID
 
     def __repr__(self):
         return "Go Back N"
 
     def send_file(self, sock: socket.socket, file: io.BufferedReader):
-        window_size = WINDOW_SIZE
+        window_size = 10
         base = 0
         next_seq_num = 0
 
@@ -31,7 +31,7 @@ class GoBackN(Protocol):
         sock.setblocking(False)
 
         self.log(f"SENDER: Starting transfer of {total_packets} packets with \
-                 Go-Back-N.")
+                 {self}.")
 
         while base < total_packets:
             while next_seq_num < base + window_size and \
@@ -74,7 +74,7 @@ class GoBackN(Protocol):
 
     def recv_file(self, sock: socket.socket, file: io.BufferedWriter):
         expected_seq_num = 0
-        self.log("RECEIVER: Ready to receive data with Go-Back-N.")
+        self.log(f"RECEIVER: Ready to receive data with {self}.")
 
         while True:
             try:

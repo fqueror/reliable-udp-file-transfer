@@ -1,9 +1,9 @@
-from lib.settings import OP_UPLOAD, OP_DOWNLOAD, FILE_WRITER, FILE_READER, \
-    FILE_NOT_FOUND, ACK, TIMEOUT, SYN, LOW_VERBOSITY, MEDIUM_VERBOSITY, \
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, WRITE_IN_BINARY_MODE, \
+    READ_IN_BINARY_MODE, FILE_NOT_FOUND, LOW_VERBOSITY, MEDIUM_VERBOSITY, \
     HIGH_VERBOSITY
-from lib.protocol.protocol import Protocol, MTU
+from lib.protocol.protocol import Protocol, MTU, TIMEOUT
+from lib.segment import Segment, SYN, ACK
 from lib.metadata import Metadata
-from lib.segment import Segment
 import threading
 import argparse
 import pickle
@@ -63,11 +63,11 @@ class Server:
             path = os.path.join(self.storage, str(metadata.filename))
 
             if metadata.operation == OP_UPLOAD:
-                with open(path, FILE_WRITER) as file:
+                with open(path, WRITE_IN_BINARY_MODE) as file:
                     protocol.recv_file(connection_socket, file)
             elif metadata.operation == OP_DOWNLOAD:
                 try:
-                    with open(path, FILE_READER) as file:
+                    with open(path, READ_IN_BINARY_MODE) as file:
                         protocol.send_file(connection_socket, file)
                 except FileNotFoundError:
                     segment = Segment(

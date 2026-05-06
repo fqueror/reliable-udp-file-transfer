@@ -1,5 +1,7 @@
-from lib.settings import ACK, FIN, ERR, SYN
-
+SYN = "SYN"
+ACK = "ACK"
+FIN = "FIN"
+ERR = "ERR"
 
 class Segment:
     """

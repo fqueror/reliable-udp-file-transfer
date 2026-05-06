@@ -5,27 +5,8 @@ DOWNLOAD = "download"
 UPLOAD = "upload"
 START_SERVER = "start-server"
 
-# PROTOCOL
-# We use the MTU (Maximum Transmission Unit) as our segment's maximum size so
-# as to avoid fragmentation in lower Internet layers.
-MTU = 1500
-# An MSS is the Maximum Segment Size, though it defines the maximum payload
-# size. According to Kurose's book, 1460 bytes is its typical value, but we use
-# less than that since out segment's header uses more than 40 bytes.
-# TODO We should keep it in the highest possible value.
-MAX_PAYLOAD_SIZE = 1350
-MAX_RETRIES = 5
-# After trying different values, this is the one that got us the best
-# performance:
-TIMEOUT = 0.05
-MAX_TIMEOUT_HANDSHAKE = 10
-STOP_AND_WAIT = "stop-and-wait"
-GO_BACK_N = "go-back-n"
-WINDOW_SIZE = 10
-
-# File
-FILE_WRITER = "wb"
-FILE_READER = "rb"
+WRITE_IN_BINARY_MODE = "wb"
+READ_IN_BINARY_MODE = "rb"
 
 # Error
 FILE_NOT_FOUND = "File not found"
@@ -33,12 +14,6 @@ PERMISSION_DENIED = "Permission denied"
 FILE_PATH_NOT_SPECIFIED = "File path not specified"
 DIRECTORY_NOT_FOUND = "Directory not found"
 FAILED_TO_ESTABLISH_CONNECTION = "Failed to establish connection"
-
-# Flags
-ACK = "ACK"
-FIN = "FIN"
-ERR = "ERR"
-SYN = "SYN"
 
 LOW_VERBOSITY = 0
 MEDIUM_VERBOSITY = 1

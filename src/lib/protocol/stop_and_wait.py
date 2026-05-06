@@ -1,14 +1,14 @@
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, \
-    STOP_AND_WAIT, ACK, ERR, FIN, SYN, HIGH_VERBOSITY
-from lib.protocol.protocol import Protocol
-from lib.segment import Segment
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, HIGH_VERBOSITY
+from lib.protocol.protocol import Protocol, MAX_PAYLOAD_SIZE
+from lib.segment import Segment, SYN, ACK, FIN, ERR
 import pickle
 import socket
 import io
 
+STOP_AND_WAIT_ID = "stop-and-wait"
 
 class StopAndWait(Protocol):
-    ID = STOP_AND_WAIT
+    ID = STOP_AND_WAIT_ID
 
     def __repr__(self):
         return "Stop And Wait"
@@ -16,7 +16,7 @@ class StopAndWait(Protocol):
     def send_file(self, origin: socket.socket, file: io.BufferedReader):
         seq = 0
 
-        self.log("SENDER: Starting transfer with Stop & Wait.")
+        self.log(f"SENDER: Starting transfer with {self}.")
 
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
@@ -47,7 +47,7 @@ class StopAndWait(Protocol):
         #Sino no me anda el stop and wait
         origin.settimeout(None)
 
-        self.log("RECEIVER: Ready to receive data with Stop & Wait.")
+        self.log(f"RECEIVER: Ready to receive data with {self}.")
 
         while True:
             segment = self._recv_segment(origin)
