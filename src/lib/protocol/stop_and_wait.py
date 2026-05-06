@@ -46,6 +46,8 @@ class StopAndWait(Protocol):
 
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
         expected_seq = 0
+        #Sino no me anda el stop and wait
+        origin.settimeout(None)
 
         self.log("RECEIVER: Ready to receive data with Stop & Wait.")
 
