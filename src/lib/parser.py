@@ -1,8 +1,9 @@
+from lib.settings import STOP_AND_WAIT, GO_BACK_N, UPLOAD, DOWNLOAD, \
+    START_SERVER, LOW_VERBOSITY, HIGH_VERBOSITY
+from lib.protocol.protocol import Protocol
 import argparse
 import pathlib
 
-from lib.settings import STOP_AND_WAIT, GO_BACK_N, UPLOAD, DOWNLOAD, START_SERVER
-from lib.protocol.protocol import Protocol
 # No borrar estos imports
 from lib.protocol.go_back_n import GoBackN
 from lib.protocol.stop_and_wait import StopAndWait
@@ -21,10 +22,10 @@ def get_args(prog: str) -> argparse.Namespace:
                                      formatter_class=SpacedHelpFormatter)
 
     verbosity_group = parser.add_mutually_exclusive_group()
-    verbosity_group.add_argument("-v", "--verbose", action="store_true",
-                                 help="increase output verbosity")
     verbosity_group.add_argument("-q", "--quiet", action="store_true",
                                  help="decrease output verbosity")
+    verbosity_group.add_argument("-v", "--verbose", action="store_true",
+                                 help="increase output verbosity")
 
     if prog == UPLOAD or prog == DOWNLOAD:
         parser.add_argument("-H", "--host", metavar="ADDR", action="store",
@@ -75,7 +76,9 @@ def validate_args(args: argparse.Namespace):
         exit(1)
 
     protocol = Protocol.from_str(args.protocol)
-    protocol.verbose = args.verbose
-    protocol.quiet = args.quiet
+    if args.quiet:
+        protocol.set_verbosity_level(LOW_VERBOSITY)
+    elif args.verbose:
+        protocol.set_verbosity_level(HIGH_VERBOSITY)
 
     return protocol

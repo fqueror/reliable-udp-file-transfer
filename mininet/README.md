@@ -3,7 +3,7 @@
 Instalamos MiniNet y el controlador para el _switch_ con:
 
 ```bash
-sudo apt install mininet openvswitch-testcontroller
+sudo apt install -y mininet openvswitch-testcontroller
 ```
 
 Levantamos la red con:
@@ -16,7 +16,7 @@ sudo python3 mininet/mininet_topology.py
 
 Ahí, nos encontraremos en la **CLI** de MiniNet. Desde acá, podremos ejecutar comandos en cada _host_: en cada línea de comandos, indicamos el _host_ y luego el programa a ejecutar. Por ejemplo…
 
-- Levantamos el servidor: `server python3 src/start_server.py -H 10.0.0.3 -p 12000 -s cloud &`.
+- Levantamos el servidor: `server python3 src/start_server.py -H 10.0.0.3 -p 12000 -s cloud &`. Dado que agregamos el `&` para que el servidor se ejecute en el _background_ y así poder ejecutar luego los clientes, para poder ver su _output_, podemos agregar `> server.log 2>&1` antes del `&`.
 - Subimos un archivo: `client1 python3 src/upload.py -H 10.0.0.3 -p 12000 -s mininet/foto1.jpg -n archivo.jpg -r stop-and-wait`.
 - Descargar un archivo: `client1 python3 src/download.py -H 10.0.0.3 -p 12000 -n archivo.jpg -r stop-and-wait`.
 

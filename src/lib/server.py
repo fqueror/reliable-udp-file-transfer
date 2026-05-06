@@ -1,14 +1,15 @@
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, \
+    SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, SERVER_DEFAULT_STORAGE, \
+    FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK, TIMEOUT, SYN, \
+    LOW_VERBOSITY, MEDIUM_VERBOSITY, HIGH_VERBOSITY
+from lib.protocol.protocol import Protocol, MTU
+from lib.metadata import Metadata
+from lib.segment import Segment
 import threading
 import argparse
-import socket
 import pickle
+import socket
 import os
-
-from lib.metadata import Metadata
-from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, \
-    SERVER_DEFAULT_STORAGE, FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK, TIMEOUT, SYN
-from lib.protocol.protocol import Protocol, MTU
-from lib.segment import Segment
 
 
 class Server:
@@ -16,8 +17,12 @@ class Server:
         self.host = None
         self.port = None
         self.storage = None
-        self.verbose = args.verbose
-        self.quiet = args.quiet
+        if args.quiet:
+            self.verbosity_level = LOW_VERBOSITY
+        elif args.verbose:
+            self.verbosity_level = HIGH_VERBOSITY
+        else:
+            self.verbosity_level = MEDIUM_VERBOSITY
 
         self.config_server(args)
 
@@ -33,12 +38,9 @@ class Server:
         self.storage = args.storage or SERVER_DEFAULT_STORAGE
         os.makedirs(self.storage, exist_ok=True)
 
-    def log(self, message: str, is_verbose: bool = False):
-        if self.quiet:
-            return
-        if is_verbose and not self.verbose:
-            return
-        print(message)
+    def log(self, msg: str, verbosity_level: int = MEDIUM_VERBOSITY):
+        if self.verbosity_level >= verbosity_level:
+            print(msg)
 
     def handle_client(self, metadata: Metadata, addr: tuple,
                       connection_socket: socket.socket):
@@ -62,8 +64,7 @@ class Server:
                     continue
 
             protocol = Protocol.from_str(metadata.protocol)
-            protocol.verbose = self.verbose
-            protocol.quiet = self.quiet
+            protocol.set_verbosity_level(self.verbosity_level)
 
             path = os.path.join(self.storage, str(metadata.filename))
 

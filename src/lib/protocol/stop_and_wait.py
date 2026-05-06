@@ -1,10 +1,10 @@
-import io
-import pickle
-import socket
-
+from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, \
+    STOP_AND_WAIT, ACK, ERR, FIN, SYN, HIGH_VERBOSITY
 from lib.protocol.protocol import Protocol
 from lib.segment import Segment
-from lib.settings import MAX_PAYLOAD_SIZE, OP_UPLOAD, OP_DOWNLOAD, STOP_AND_WAIT, ACK, ERR, FIN, SYN
+import pickle
+import socket
+import io
 
 
 class StopAndWait(Protocol):
@@ -21,7 +21,7 @@ class StopAndWait(Protocol):
         while chunk := file.read(MAX_PAYLOAD_SIZE):
             while True:
                 origin.send(pickle.dumps(Segment(seq_num=seq, payload=chunk)))
-                self.log(f"SENDER: Sent packet {seq}", is_verbose=True)
+                self.log(f"SENDER: Sent packet {seq}", HIGH_VERBOSITY)
 
                 try:
                     reply = self._recv_segment(origin)
@@ -33,9 +33,7 @@ class StopAndWait(Protocol):
                         continue
 
                     if reply.flags[ACK] and reply.ack_num == seq:
-                        self.log(
-                            f"SENDER: Received ACK {seq}",
-                            is_verbose=True)
+                        self.log(f"SENDER: Received ACK {seq}", HIGH_VERBOSITY)
                         seq = 1 - seq
                         break
                 except socket.timeout:
@@ -60,9 +58,8 @@ class StopAndWait(Protocol):
                 continue
 
             if segment.seq_num != expected_seq:
-                self.log(
-                    f"RECEIVER: Wrong sequence number. Expected {expected_seq}, got {
-                        segment.seq_num}", is_verbose=True)
+                self.log(f"RECEIVER: Wrong sequence number. Expected \
+                         {expected_seq}, got {segment.seq_num}", HIGH_VERBOSITY)
                 origin.send(pickle.dumps(
                     Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue
@@ -77,7 +74,7 @@ class StopAndWait(Protocol):
                 break
 
             file.write(segment.payload)
-            self.log(f"RECEIVER: Got packet {expected_seq}", is_verbose=True)
+            self.log(f"RECEIVER: Got packet {expected_seq}", HIGH_VERBOSITY)
             origin.send(pickle.dumps(
                 Segment(ack_flag=True, ack_num=expected_seq)))
             expected_seq = 1 - expected_seq

@@ -1,8 +1,7 @@
+from lib.settings import DOWNLOAD, FILE_WRITER, DIRECTORY_NOT_FOUND, TIMEOUT
 from lib.parser import get_args, validate_args
 import socket
 import os
-
-from lib.settings import DOWNLOAD, FILE_WRITER, DIRECTORY_NOT_FOUND, TIMEOUT
 
 if __name__ == "__main__":
     args = get_args(DOWNLOAD)

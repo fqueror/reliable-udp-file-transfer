@@ -1,7 +1,8 @@
+from lib.settings import UPLOAD, FILE_READER, FILE_NOT_FOUND, \
+    PERMISSION_DENIED, FILE_PATH_NOT_SPECIFIED, TIMEOUT
+from lib.parser import get_args, validate_args
 import socket
 
-from lib.parser import get_args, validate_args
-from lib.settings import UPLOAD, FILE_READER, FILE_NOT_FOUND, PERMISSION_DENIED, FILE_PATH_NOT_SPECIFIED, TIMEOUT
 
 if __name__ == "__main__":
     args = get_args(UPLOAD)

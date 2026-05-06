@@ -1,28 +1,26 @@
+from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, MAX_RETRIES, \
+    SYN, FAILED_TO_ESTABLISH_CONNECTION, MEDIUM_VERBOSITY, HIGH_VERBOSITY
+from lib.metadata import Metadata
+from lib.segment import Segment
 import socket
 import pickle
 
-from lib.settings import MTU, MAX_TIMEOUT_HANDSHAKE, ACK, FIN, MAX_RETRIES, SYN, FAILED_TO_ESTABLISH_CONNECTION
-from lib.metadata import Metadata
-from lib.segment import Segment
-
-
 class Protocol:
-    def __init__(self, verbose: bool = False, quiet: bool = False):
-        self.verbose = verbose
-        self.quiet = quiet
-
-    def log(self, message: str, is_verbose: bool = False):
-        if self.quiet:
-            return
-        if is_verbose and not self.verbose:
-            return
-        print(message)
+    def __init__(self):
+        self.set_verbosity_level()
 
     @classmethod
     def from_str(cls, str):
         for subclass in cls.__subclasses__():
             if str == subclass.ID:
                 return subclass()
+
+    def set_verbosity_level(self, verbosity_level: int = MEDIUM_VERBOSITY):
+        self.verbosity_level = verbosity_level
+
+    def log(self, msg: str, verbosity_level: int = MEDIUM_VERBOSITY):
+        if self.verbosity_level >= verbosity_level:
+            print(msg)
 
     def _recv_segment(self, dest: socket.socket) -> Segment:
         bytes_received = bytearray(MTU)
@@ -54,15 +52,14 @@ class Protocol:
                     break
 
             except socket.timeout:
-                self.log(
-                    f"Attempt {
-                        attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} failed. Retrying...")
+                self.log(f"Attempt {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} \
+                         failed. Retrying…")
         else:
             raise ConnectionError(FAILED_TO_ESTABLISH_CONNECTION)
 
     def _teardown_sender(self, sock: socket.socket, seq_num: int,
                          ) -> None:
-        self.log("SENDER: Starting teardown...", is_verbose=True)
+        self.log("SENDER: Starting teardown…", HIGH_VERBOSITY)
 
         while True:
             sock.send(pickle.dumps(Segment(fin_flag=True, seq_num=seq_num)))
@@ -93,10 +90,10 @@ class Protocol:
                 retries += 1
                 continue
 
-        self.log("SENDER: Teardown complete.", is_verbose=True)
+        self.log("SENDER: Teardown complete.", HIGH_VERBOSITY)
 
     def _teardown_recv(self, sock: socket.socket, expected_seq: int) -> None:
-        self.log("RECEIVER: Starting teardown...", is_verbose=True)
+        self.log("RECEIVER: Starting teardown...", HIGH_VERBOSITY)
 
         sock.send(pickle.dumps(
             Segment(ack_flag=True, ack_num=expected_seq)))
@@ -113,4 +110,4 @@ class Protocol:
                 retries += 1
                 continue
 
-        self.log("RECEIVER: Teardown complete.", is_verbose=True)
+        self.log("RECEIVER: Teardown complete.", HIGH_VERBOSITY)
