@@ -1,7 +1,6 @@
-from lib.settings import OP_UPLOAD, OP_DOWNLOAD, MAX_ATTEMPTS, \
-    SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, SERVER_DEFAULT_STORAGE, \
-    FILE_WRITER, FILE_READER, FILE_NOT_FOUND, ACK, TIMEOUT, SYN, \
-    LOW_VERBOSITY, MEDIUM_VERBOSITY, HIGH_VERBOSITY
+from lib.settings import OP_UPLOAD, OP_DOWNLOAD, FILE_WRITER, FILE_READER, \
+    FILE_NOT_FOUND, ACK, TIMEOUT, SYN, LOW_VERBOSITY, MEDIUM_VERBOSITY, \
+    HIGH_VERBOSITY
 from lib.protocol.protocol import Protocol, MTU
 from lib.metadata import Metadata
 from lib.segment import Segment
@@ -14,9 +13,12 @@ import os
 
 class Server:
     def __init__(self, args: argparse.Namespace):
-        self.host = None
-        self.port = None
-        self.storage = None
+        self.host = args.host
+        self.port = args.port
+
+        self.storage = args.storage
+        os.makedirs(self.storage, exist_ok=True)
+
         if args.quiet:
             self.verbosity_level = LOW_VERBOSITY
         elif args.verbose:
@@ -24,19 +26,11 @@ class Server:
         else:
             self.verbosity_level = MEDIUM_VERBOSITY
 
-        self.config_server(args)
-
         self.welcoming_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_DGRAM)
         self.welcoming_socket.bind((self.host, self.port))
         self._clients_in_progress: dict[tuple, socket.socket] = {}
         self._lock = threading.Lock()
-
-    def config_server(self, args: argparse.Namespace):
-        self.host = args.host or SERVER_DEFAULT_HOST
-        self.port = args.port or SERVER_DEFAULT_PORT
-        self.storage = args.storage or SERVER_DEFAULT_STORAGE
-        os.makedirs(self.storage, exist_ok=True)
 
     def log(self, msg: str, verbosity_level: int = MEDIUM_VERBOSITY):
         if self.verbosity_level >= verbosity_level:
@@ -79,7 +73,7 @@ class Server:
                     segment = Segment(
                         error_flag=True,
                         payload=pickle.dumps(FILE_NOT_FOUND))
-                    for attempt in range(MAX_ATTEMPTS):
+                    for attempt in range(3):
                         try:
                             connection_socket.send(pickle.dumps(segment))
                             ack = pickle.loads(connection_socket.recv(MTU))
@@ -89,7 +83,6 @@ class Server:
                                 break
                         except socket.timeout:
                             continue
-                    connection_socket.close()
 
         finally:
             with self._lock:

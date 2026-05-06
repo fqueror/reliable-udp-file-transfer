@@ -23,12 +23,6 @@ STOP_AND_WAIT = "stop-and-wait"
 GO_BACK_N = "go-back-n"
 WINDOW_SIZE = 10
 
-# Server
-MAX_ATTEMPTS = 3
-SERVER_DEFAULT_HOST = "0.0.0.0"
-SERVER_DEFAULT_PORT = 12000
-SERVER_DEFAULT_STORAGE = "./storage"
-
 # File
 FILE_WRITER = "wb"
 FILE_READER = "rb"
