@@ -30,8 +30,8 @@ class GoBackN(Protocol):
         total_packets = len(chunks)
         sock.setblocking(False)
 
-        self.log(f"SENDER: Starting transfer of {total_packets} packets with \
-                 {self}.")
+        self.log(f"SENDER: Starting transfer of {total_packets} packets with " \
+                 + f"{self}.")
 
         while base < total_packets:
             while next_seq_num < base + window_size and \
@@ -45,8 +45,7 @@ class GoBackN(Protocol):
                 next_seq_num += 1
 
             current_time = time.time()
-            time_left = max(0.0, TIMEOUT -
-                            (current_time - start_time))
+            time_left = max(0.0, TIMEOUT - (current_time - start_time))
             ready, _, _ = select.select([sock], [], [], time_left)
 
             if ready:
@@ -103,8 +102,8 @@ class GoBackN(Protocol):
                         Segment(ack_flag=True, ack_num=expected_seq_num)))
                     expected_seq_num += 1
                 else:
-                    self.log(f"RECEIVER: Out of order. Expected \
-                             {expected_seq_num}, got {segment.seq_num}",
+                    self.log("RECEIVER: Out of order. Expected " + \
+                             f"{expected_seq_num}, got {segment.seq_num}",
                              HIGH_VERBOSITY)
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num - 1)))

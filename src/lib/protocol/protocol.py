@@ -14,9 +14,11 @@ MTU = 1500
 # TODO We should keep it in the highest possible value.
 MAX_PAYLOAD_SIZE = 1350
 
-TIMEOUT = 0.05
 MAX_TIMEOUT_HANDSHAKE = 10
-MAX_RETRIES = 5
+MAX_RETRIES = 8
+# After trying different values, this is the one that got us the best
+# performance:
+TIMEOUT = 0.05
 
 class Protocol:
     def __init__(self):
@@ -40,11 +42,8 @@ class Protocol:
         q_bytes_received = dest.recv_into(bytes_received)
         return pickle.loads(bytes_received[:q_bytes_received])
 
-    def _handshake(self, origin: socket.socket,
-                   dest: tuple[str, int],
-                   operation: str,
-                   filename: str):
-
+    def _handshake(self, origin: socket.socket, dest: tuple[str, int],
+                   operation: str, filename: str):
         for attempt in range(MAX_TIMEOUT_HANDSHAKE):
             try:
                 origin.sendto(pickle.dumps(
@@ -55,8 +54,7 @@ class Protocol:
                 reply = pickle.loads(
                     bytes_received[:q_bytes_received])
 
-                if reply.flags[ACK] and reply.flags[SYN] \
-                        and reply.ack_num == 1:
+                if reply.flags[ACK] and reply.flags[SYN] and reply.ack_num == 1:
                     # este último AND puede
                     # llegar a ser redundante
                     origin.connect(dest)
@@ -65,8 +63,8 @@ class Protocol:
                     break
 
             except socket.timeout:
-                self.log(f"Attempt {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} \
-                         failed. Retrying…")
+                self.log(f"Attempt {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} " + \
+                         "failed. Retrying…")
         else:
             raise ConnectionError(FAILED_TO_ESTABLISH_CONNECTION)
 

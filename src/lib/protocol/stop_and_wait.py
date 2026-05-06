@@ -58,8 +58,9 @@ class StopAndWait(Protocol):
                 continue
 
             if segment.seq_num != expected_seq:
-                self.log(f"RECEIVER: Wrong sequence number. Expected \
-                         {expected_seq}, got {segment.seq_num}", HIGH_VERBOSITY)
+                self.log("RECEIVER: Wrong sequence number. Expected " + \
+                         f"{expected_seq}, got {segment.seq_num}",
+                         HIGH_VERBOSITY)
                 origin.send(pickle.dumps(
                     Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue
