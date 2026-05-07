@@ -77,6 +77,7 @@ class Protocol:
             try:
                 reply = self._recv_segment(sock)
                 if reply.flags[ACK] and reply.ack_num == seq_num:
+                    self.log("SENDER: Received ACK for FIN")
                     break
 
                 # con esto evitamos un deadlock fin - fin.
@@ -116,6 +117,7 @@ class Protocol:
             try:
                 reply = self._recv_segment(sock)
                 if reply.flags[ACK] and reply.ack_num == expected_seq:
+                    self.log("RECEIVER: Received ACK for FIN")
                     break
             except socket.timeout:
                 retries += 1
