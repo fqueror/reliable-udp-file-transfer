@@ -65,7 +65,8 @@ class GoBackN(Protocol):
                 except Exception:
                     pass
             else:
-                self.log(f"SENDER: Timeout! Resending from {base}")
+                self.log(f"SENDER: Timeout! Resending from {base}",
+                         HIGH_VERBOSITY)
                 next_seq_num = base
 
         sock.setblocking(True)

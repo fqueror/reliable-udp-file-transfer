@@ -37,7 +37,8 @@ class StopAndWait(Protocol):
                         seq = 1 - seq
                         break
                 except socket.timeout:
-                    self.log(f"SENDER: Timeout! Resending packet {seq}")
+                    self.log(f"SENDER: Timeout! Resending packet {seq}",
+                             HIGH_VERBOSITY)
                     continue
 
         self._teardown_sender(origin, seq)
@@ -50,7 +51,10 @@ class StopAndWait(Protocol):
         self.log(f"RECEIVER: Ready to receive data with {self}.")
 
         while True:
-            segment = self._recv_segment(origin)
+            try:
+                segment = self._recv_segment(origin)
+            except socket.timeout:
+                continue
 
             if segment.flags[SYN]:
                 origin.send(pickle.dumps(
