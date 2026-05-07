@@ -1,6 +1,6 @@
 from lib.protocol.protocol import Protocol, MAX_PAYLOAD_SIZE, TIMEOUT
 from lib.settings import OP_UPLOAD, OP_DOWNLOAD, HIGH_VERBOSITY
-from lib.segment import Segment, SYN, ACK, FIN, ERR
+from lib.segment import Segment, SYN, ACK, FIN
 import socket
 import pickle
 import select
@@ -86,10 +86,6 @@ class GoBackN(Protocol):
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, seq_num=1, ack_num=1)))
                     continue
-
-                if segment.flags[ERR]:
-                    sock.send(pickle.dumps(Segment(ack_flag=True)))
-                    raise ConnectionError(pickle.loads(segment.payload))
 
                 if segment.flags[FIN] and \
                         segment.seq_num == expected_seq_num:

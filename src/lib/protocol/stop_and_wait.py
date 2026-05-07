@@ -1,6 +1,6 @@
 from lib.settings import OP_UPLOAD, OP_DOWNLOAD, HIGH_VERBOSITY
 from lib.protocol.protocol import Protocol, MAX_PAYLOAD_SIZE
-from lib.segment import Segment, SYN, ACK, FIN, ERR
+from lib.segment import Segment, SYN, ACK, FIN
 import pickle
 import socket
 import io
@@ -45,8 +45,6 @@ class StopAndWait(Protocol):
 
     def recv_file(self, origin: socket.socket, file: io.BufferedReader):
         expected_seq = 0
-        #Sino no me anda el stop and wait
-        origin.settimeout(None)
 
         self.log(f"RECEIVER: Ready to receive data with {self}.")
 
@@ -68,10 +66,6 @@ class StopAndWait(Protocol):
                 origin.send(pickle.dumps(
                     Segment(ack_flag=True, ack_num=1 - expected_seq)))
                 continue
-
-            if segment.flags[ERR]:
-                origin.send(pickle.dumps(Segment(ack_flag=True)))
-                raise ConnectionError(pickle.loads(segment.payload))
 
             if segment.flags[FIN]:
                 self.log("RECEIVER: FIN received.")
