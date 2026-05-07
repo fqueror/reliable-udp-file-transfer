@@ -1,4 +1,4 @@
-from lib.settings import DOWNLOAD, WRITE_IN_BINARY_MODE, DIRECTORY_NOT_FOUND
+from lib.settings import DOWNLOAD, WRITE_IN_BINARY_MODE
 from lib.parser import get_args, validate_args
 from lib.protocol.protocol import TIMEOUT
 import socket
@@ -10,14 +10,14 @@ if __name__ == "__main__":
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client_socket.settimeout(TIMEOUT)
+
+    os.makedirs(args.dst, exist_ok=True)
     file_path = os.path.join(args.dst, args.name)
 
     try:
         with open(file_path, WRITE_IN_BINARY_MODE) as file:
             protocol.client_recv(client_socket, (args.host, args.port), file,
                                  args.name)
-    except FileNotFoundError:
-        print(DIRECTORY_NOT_FOUND)
     except ConnectionError as e:
         print(f"Connection error: {e}")
         if os.path.exists(file_path):

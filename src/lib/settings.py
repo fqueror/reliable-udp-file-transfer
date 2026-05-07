@@ -9,10 +9,8 @@ WRITE_IN_BINARY_MODE = "wb"
 READ_IN_BINARY_MODE = "rb"
 
 # Error
-FILE_NOT_FOUND = "File not found"
 PERMISSION_DENIED = "Permission denied"
 FILE_PATH_NOT_SPECIFIED = "File path not specified"
-DIRECTORY_NOT_FOUND = "Directory not found"
 FAILED_TO_ESTABLISH_CONNECTION = "Failed to establish connection"
 
 LOW_VERBOSITY = 0
