@@ -1,5 +1,5 @@
 from lib.settings import UPLOAD, DOWNLOAD, START_SERVER, LOW_VERBOSITY, \
-    HIGH_VERBOSITY
+    MEDIUM_VERBOSITY, HIGH_VERBOSITY
 from lib.protocol.stop_and_wait import STOP_AND_WAIT_ID
 from lib.protocol.go_back_n import GO_BACK_N_ID
 from lib.protocol.protocol import Protocol
@@ -55,7 +55,18 @@ def get_args(prog: str) -> argparse.Namespace:
         parser.add_argument("-s", "--storage", action="store",
                             help="storage directory path", metavar="DIRPATH")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.quiet:
+        args.verbosity_level = LOW_VERBOSITY
+    elif args.verbose:
+        args.verbosity_level = HIGH_VERBOSITY
+    else:
+        args.verbosity_level = MEDIUM_VERBOSITY
+    delattr(args, "quiet")
+    delattr(args, "verbose")
+
+    return args
 
 
 def validate_args(args: argparse.Namespace):
@@ -64,9 +75,6 @@ def validate_args(args: argparse.Namespace):
         exit(1)
 
     protocol = Protocol.from_str(args.protocol)
-    if args.quiet:
-        protocol.set_verbosity_level(LOW_VERBOSITY)
-    elif args.verbose:
-        protocol.set_verbosity_level(HIGH_VERBOSITY)
+    protocol.set_verbosity_level(args.verbosity_level)
 
     return protocol

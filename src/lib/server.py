@@ -1,5 +1,5 @@
 from lib.settings import OP_UPLOAD, OP_DOWNLOAD, WRITE_IN_BINARY_MODE, \
-    READ_IN_BINARY_MODE, LOW_VERBOSITY, MEDIUM_VERBOSITY, HIGH_VERBOSITY
+    READ_IN_BINARY_MODE, LOW_VERBOSITY, MEDIUM_VERBOSITY
 from lib.protocol.protocol import Protocol, MTU, TIMEOUT
 from lib.segment import Segment, SYN, ACK
 from lib.metadata import Metadata
@@ -18,12 +18,7 @@ class Server:
         self.storage = args.storage
         os.makedirs(self.storage, exist_ok=True)
 
-        if args.quiet:
-            self.verbosity_level = LOW_VERBOSITY
-        elif args.verbose:
-            self.verbosity_level = HIGH_VERBOSITY
-        else:
-            self.verbosity_level = MEDIUM_VERBOSITY
+        self.verbosity_level = args.verbosity_level
 
         self.welcoming_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_DGRAM)
