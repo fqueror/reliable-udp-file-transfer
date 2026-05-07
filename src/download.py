@@ -18,9 +18,15 @@ if __name__ == "__main__":
         with open(file_path, WRITE_IN_BINARY_MODE) as file:
             protocol.client_recv(client_socket, (args.host, args.port), file,
                                  args.name)
-    except ConnectionError as e:
-        print(f"Connection error: {e}")
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    except:
+        # Ante cualquier error que haya ocurrido, eliminamos el archivo que se
+        # intentó descargar:
+        os.remove(file_path)
+        # Pero además, si la carpeta donde lo estábamos guardando quedó vacía,
+        # la eliminamos también:
+        try:
+            os.rmdir(args.dst)
+        except OSError:
+            pass
 
     client_socket.close()
