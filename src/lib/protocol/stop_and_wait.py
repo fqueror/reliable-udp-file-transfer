@@ -7,6 +7,7 @@ import io
 
 STOP_AND_WAIT_ID = "stop-and-wait"
 
+
 class StopAndWait(Protocol):
     ID = STOP_AND_WAIT_ID
 
@@ -63,7 +64,7 @@ class StopAndWait(Protocol):
                 continue
 
             if segment.seq_num != expected_seq:
-                self.log("RECEIVER: Wrong sequence number. Expected " + \
+                self.log("RECEIVER: Wrong sequence number. Expected " +
                          f"{expected_seq}, got {segment.seq_num}",
                          HIGH_VERBOSITY)
                 origin.send(pickle.dumps(

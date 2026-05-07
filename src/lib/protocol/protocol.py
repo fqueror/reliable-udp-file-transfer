@@ -20,6 +20,7 @@ MAX_RETRIES = 8
 # performance:
 TIMEOUT = 0.05
 
+
 class Protocol:
     def __init__(self):
         self.set_verbosity_level()
@@ -63,7 +64,7 @@ class Protocol:
                     break
 
             except socket.timeout:
-                self.log(f"Attempt {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} " + \
+                self.log(f"Attempt {attempt + 1}/{MAX_TIMEOUT_HANDSHAKE} " +
                          "failed. Retrying…")
         else:
             raise ConnectionError(FAILED_TO_ESTABLISH_CONNECTION)

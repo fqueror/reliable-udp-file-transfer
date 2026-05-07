@@ -2,6 +2,7 @@ SYN = "SYN"
 ACK = "ACK"
 FIN = "FIN"
 
+
 class Segment:
     """
     We use a Python class to construct the segment because it is easier to

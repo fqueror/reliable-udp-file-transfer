@@ -64,7 +64,9 @@ class Server:
                     with open(path, READ_IN_BINARY_MODE) as file:
                         protocol.send_file(connection_socket, file)
                 except FileNotFoundError:
-                    self.log(f"[SOCKET] `{path}` doesn't exist.", LOW_VERBOSITY)
+                    self.log(
+                        f"[SOCKET] `{path}` doesn't exist.",
+                        LOW_VERBOSITY)
 
         finally:
             with self._lock:
@@ -72,8 +74,8 @@ class Server:
             connection_socket.close()
 
     def start(self):
-        self.log("[SERVER] Server running, listening to connections at " + \
-                 f"`{self.host}:{self.port}`, and saving files in directory " + \
+        self.log("[SERVER] Server running, listening to connections at " +
+                 f"`{self.host}:{self.port}`, and saving files in directory " +
                  f"`{self.storage}`.")
         try:
             while True:
