@@ -75,12 +75,13 @@ class GoBackN(Protocol):
     def recv_file(self, sock: socket.socket, file: io.BufferedWriter):
         expected_seq_num = 0
         self.log(f"RECEIVER: Ready to receive data with {self}.")
+        sock.settimeout(TIMEOUT)
 
-        while True:
+        retries = 0
+        while retries < 8:
             try:
-                sock.settimeout(None)
                 segment: Segment = self._recv_segment(sock)
-
+                retries = 0
                 # parche por si el último ACK del Handshake se pierde
                 if segment.flags[SYN]:
                     sock.send(pickle.dumps(
@@ -104,6 +105,9 @@ class GoBackN(Protocol):
                              HIGH_VERBOSITY)
                     sock.send(pickle.dumps(
                         Segment(ack_flag=True, ack_num=expected_seq_num - 1)))
+            except socket.timeout:
+                retries += 1
+                continue
             except ConnectionError as e:
                 raise e
             except Exception as e:

@@ -48,10 +48,13 @@ class StopAndWait(Protocol):
 
         self.log(f"RECEIVER: Ready to receive data with {self}.")
 
-        while True:
+        retries = 0
+        while retries < 8:
             try:
                 segment = self._recv_segment(origin)
             except socket.timeout:
+                retries += 1
+                self.log("RECEIVER: Timeout! Resending SYN.", HIGH_VERBOSITY)
                 continue
 
             if segment.flags[SYN]:
@@ -74,9 +77,14 @@ class StopAndWait(Protocol):
 
             file.write(segment.payload)
             self.log(f"RECEIVER: Got packet {expected_seq}", HIGH_VERBOSITY)
+            retries = 0
             origin.send(pickle.dumps(
                 Segment(ack_flag=True, ack_num=expected_seq)))
             expected_seq = 1 - expected_seq
+
+        if retries >= 8:
+            self.log("RECEIVER: Timeout! Resending FIN.", HIGH_VERBOSITY)
+            raise TimeoutError("Timeout while receiving file.")
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
                     file: io.BufferedReader, filename: str):
