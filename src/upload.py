@@ -1,5 +1,5 @@
-from lib.settings import UPLOAD, READ_IN_BINARY_MODE, FILE_NOT_FOUND, \
-    PERMISSION_DENIED, FILE_PATH_NOT_SPECIFIED
+from lib.settings import UPLOAD, READ_IN_BINARY_MODE, PERMISSION_DENIED, \
+    FILE_PATH_NOT_SPECIFIED
 from lib.protocol.protocol import TIMEOUT
 from lib.parser import get_args, validate_args
 import socket
@@ -18,7 +18,7 @@ if __name__ == "__main__":
             protocol.client_send(client_socket, (args.host, args.port), file,
                                  args.name)
     except FileNotFoundError:
-        print(FILE_NOT_FOUND)
+        print(f"`{args.src}` doesn't exist.")
     except PermissionError:
         print(PERMISSION_DENIED)
     except TypeError:

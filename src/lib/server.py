@@ -1,6 +1,5 @@
 from lib.settings import OP_UPLOAD, OP_DOWNLOAD, WRITE_IN_BINARY_MODE, \
-    READ_IN_BINARY_MODE, FILE_NOT_FOUND, LOW_VERBOSITY, MEDIUM_VERBOSITY, \
-    HIGH_VERBOSITY
+    READ_IN_BINARY_MODE, LOW_VERBOSITY, MEDIUM_VERBOSITY, HIGH_VERBOSITY
 from lib.protocol.protocol import Protocol, MTU, TIMEOUT
 from lib.segment import Segment, SYN, ACK
 from lib.metadata import Metadata
@@ -38,7 +37,7 @@ class Server:
 
     def handle_client(self, metadata: Metadata, addr: tuple,
                       connection_socket: socket.socket):
-        self.log(f"[SOCKET] Listening to {addr}")
+        self.log(f"[SOCKET] Connecting with `{addr[0]}:{addr[1]}`.")
 
         try:
             while True:
@@ -70,19 +69,7 @@ class Server:
                     with open(path, READ_IN_BINARY_MODE) as file:
                         protocol.send_file(connection_socket, file)
                 except FileNotFoundError:
-                    segment = Segment(
-                        error_flag=True,
-                        payload=pickle.dumps(FILE_NOT_FOUND))
-                    for attempt in range(3):
-                        try:
-                            connection_socket.send(pickle.dumps(segment))
-                            ack = pickle.loads(connection_socket.recv(MTU))
-                            if ack.flags[ACK]:
-                                self.log(
-                                    f"File not found. Client {addr} notified.")
-                                break
-                        except socket.timeout:
-                            continue
+                    self.log(f"[SOCKET] `{path}` doesn't exist.", LOW_VERBOSITY)
 
         finally:
             with self._lock:
@@ -90,11 +77,9 @@ class Server:
             connection_socket.close()
 
     def start(self):
-        self.log(
-            f"[SERVER] Running server in {
-                self.host}:{
-                self.port} and storing in path {
-                self.storage}")
+        self.log("[SERVER] Server running, listening to connections at " + \
+                 f"`{self.host}:{self.port}`, and saving files in directory " + \
+                 f"`{self.storage}`.")
         try:
             while True:
                 encoded_segment, client_addr = self.welcoming_socket.recvfrom(
