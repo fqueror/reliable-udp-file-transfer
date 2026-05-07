@@ -26,35 +26,34 @@ def get_args(prog: str) -> argparse.Namespace:
                                  help="increase output verbosity")
 
     if prog == UPLOAD or prog == DOWNLOAD:
-        parser.add_argument("-H", "--host", metavar="ADDR", action="store",
-                            help="server IP address")
+        parser.add_argument("-H", "--host", action="store",
+                            help="server IP address", metavar="ADDR")
         parser.add_argument("-p", "--port", action="store", type=int,
                             help="server port")
 
         if prog == UPLOAD:
-            parser.add_argument("-s", "--src", metavar="FILEPATH",
-                                action="store", type=pathlib.Path,
-                                help="source file path")
+            parser.add_argument("-s", "--src", action="store",
+                                type=pathlib.Path, help="source file path",
+                                metavar="FILEPATH")
         elif prog == DOWNLOAD:
-            parser.add_argument("-d", "--dst", metavar="FILEPATH",
-                                action="store", type=pathlib.Path,
-                                default=pathlib.Path("."),
-                                help="destination file path")
+            parser.add_argument("-d", "--dst", action="store",
+                                default=pathlib.Path("."), type=pathlib.Path,
+                                help="destination file path",
+                                metavar="FILEPATH")
 
-        parser.add_argument("-n", "--name", metavar="FILENAME", action="store",
-                            help="file name")
-        parser.add_argument("-r", "--protocol", metavar="PROTOCOL",
-                            action="store", choices=[STOP_AND_WAIT_ID,
-                                                     GO_BACK_N_ID],
-                            help="error recovery protocol.")
+        parser.add_argument("-n", "--name", action="store", help="file name",
+                            metavar="FILENAME")
+        parser.add_argument("-r", "--protocol", action="store",
+                            choices=[STOP_AND_WAIT_ID, GO_BACK_N_ID],
+                            help="error recovery protocol", metavar="PROTOCOL")
 
     elif prog == START_SERVER:
-        parser.add_argument("-H", "--host", metavar="ADDR", action="store",
-                            default="0.0.0.0", help="service IP address")
+        parser.add_argument("-H", "--host", action="store", default="0.0.0.0",
+                            help="service IP address", metavar="ADDR")
         parser.add_argument("-p", "--port", action="store", type=int,
                             help="service port")
-        parser.add_argument("-s", "--storage", metavar="DIRPATH",
-                            action="store", help="storage directory path")
+        parser.add_argument("-s", "--storage", action="store",
+                            help="storage directory path", metavar="DIRPATH")
 
     return parser.parse_args()
 
