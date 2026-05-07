@@ -1,5 +1,5 @@
 from lib.settings import OP_UPLOAD, OP_DOWNLOAD, WRITE_IN_BINARY_MODE, \
-    READ_IN_BINARY_MODE, LOW_VERBOSITY, MEDIUM_VERBOSITY
+    READ_IN_BINARY_MODE, LOW_VERBOSITY, MEDIUM_VERBOSITY, SERVER_DEFAULT_HOST, SERVER_DEFAULT_PORT, SERVER_DEFAULT_PATH
 from lib.protocol.protocol import Protocol, MTU, TIMEOUT
 from lib.segment import Segment, SYN, ACK
 from lib.metadata import Metadata
@@ -12,10 +12,10 @@ import os
 
 class Server:
     def __init__(self, args: argparse.Namespace):
-        self.host = args.host
-        self.port = args.port
+        self.host = args.host or SERVER_DEFAULT_HOST
+        self.port = args.port or SERVER_DEFAULT_PORT
 
-        self.storage = args.storage
+        self.storage = args.storage or SERVER_DEFAULT_PATH
         os.makedirs(self.storage, exist_ok=True)
 
         self.verbosity_level = args.verbosity_level
