@@ -1,5 +1,4 @@
-from lib.settings import UPLOAD, READ_IN_BINARY_MODE, PERMISSION_DENIED, \
-    FILE_PATH_NOT_SPECIFIED
+from lib.settings import UPLOAD, READ_IN_BINARY_MODE, PERMISSION_DENIED
 from lib.protocol.protocol import TIMEOUT
 from lib.parser import get_args, validate_args
 import socket
@@ -21,8 +20,6 @@ if __name__ == "__main__":
         print(f"`{args.src}` doesn't exist.")
     except PermissionError:
         print(PERMISSION_DENIED)
-    except TypeError:
-        print(FILE_PATH_NOT_SPECIFIED)
     except ConnectionError as e:
         print(f"Connection error: {e}")
 

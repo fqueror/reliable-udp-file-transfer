@@ -33,8 +33,8 @@ def get_args(prog: str) -> argparse.Namespace:
 
         if prog == UPLOAD:
             parser.add_argument("-s", "--src", action="store",
-                                type=pathlib.Path, help="source file path",
-                                metavar="FILEPATH")
+                                type=pathlib.Path, required=True,
+                                help="source file path", metavar="FILEPATH")
         elif prog == DOWNLOAD:
             parser.add_argument("-d", "--dst", action="store",
                                 default=pathlib.Path("."), type=pathlib.Path,

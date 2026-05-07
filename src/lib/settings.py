@@ -10,7 +10,6 @@ READ_IN_BINARY_MODE = "rb"
 
 # Error
 PERMISSION_DENIED = "Permission denied"
-FILE_PATH_NOT_SPECIFIED = "File path not specified"
 FAILED_TO_ESTABLISH_CONNECTION = "Failed to establish connection"
 
 LOW_VERBOSITY = 0
