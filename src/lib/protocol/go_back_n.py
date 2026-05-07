@@ -9,6 +9,7 @@ import io
 
 GO_BACK_N_ID = "go-back-n"
 
+
 class GoBackN(Protocol):
     ID = GO_BACK_N_ID
 
@@ -28,9 +29,8 @@ class GoBackN(Protocol):
             chunks.append(data)
 
         total_packets = len(chunks)
-        sock.setblocking(False)
 
-        self.log(f"SENDER: Starting transfer of {total_packets} packets with " \
+        self.log(f"SENDER: Starting transfer of {total_packets} packets with "
                  + f"{self}.")
 
         while base < total_packets:
@@ -69,7 +69,7 @@ class GoBackN(Protocol):
                          HIGH_VERBOSITY)
                 next_seq_num = base
 
-        sock.setblocking(True)
+        sock.settimeout(TIMEOUT)
         self._teardown_sender(sock, base)
 
     def recv_file(self, sock: socket.socket, file: io.BufferedWriter):
@@ -99,7 +99,7 @@ class GoBackN(Protocol):
                         Segment(ack_flag=True, ack_num=expected_seq_num)))
                     expected_seq_num += 1
                 else:
-                    self.log("RECEIVER: Out of order. Expected " + \
+                    self.log("RECEIVER: Out of order. Expected " +
                              f"{expected_seq_num}, got {segment.seq_num}",
                              HIGH_VERBOSITY)
                     sock.send(pickle.dumps(
@@ -110,6 +110,7 @@ class GoBackN(Protocol):
                 print(f"Error: {e}")
                 continue
 
+        sock.settimeout(TIMEOUT)
         self._teardown_recv(sock, expected_seq_num)
 
     def client_send(self, origin: socket.socket, dest: tuple[str, int],
