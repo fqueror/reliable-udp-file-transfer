@@ -1,12 +1,6 @@
-# 🌐 TP1 _File Transfer_
+# 📥 TP1 _File Transfer_
 
 ## 👋🏼 Preparación
-
-Instalamos MiniNet y el controlador para el _switch_ con:
-
-```bash
-sudo apt install -y mininet openvswitch-testcontroller
-```
 
 Levantamos la red con:
 
@@ -61,5 +55,3 @@ En cuanto a **análisis**, tenemos:
 ## 👋🏼 Cierre
 
 Para cerrar el servidor, una posibilidad es: `server pkill -f python3`.
-
-Y para limpiar MiniNet, primero debemos salir de la CLI con `exit` y luego ejecutar `sudo mn -c`.
