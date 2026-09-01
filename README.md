@@ -121,44 +121,16 @@ Process Monitoring: Inspect running python instances on the server host:
 server ps aux | grep python3
 ```
 
+## 🧹 Environment Cleanup & Troubleshooting
 
-
-
-
-
-
-### 👥 Varios _hosts_
-
-Si queremos probar el funcionamiento de **varios clientes con un único servidor**, podemos iniciar varias terminales usando `xterm` dentro de la CLI de MiniNet. Por ejemplo, para crear una terminal para `server` y otra para `client1`, hacemos: `xterm server client1`.
-
-## 👨🏼‍🏫 Demostración
-
-Los siguientes son los pasos para poder a mostrar a los profesores el uso de la aplicación para 2 subidas y 2 descargas, todo en simultáneo y usando ambos protocolos.
-
-Empezamos con:
+If the server hangs or you need to terminate all running Python instances across Mininet hosts, execute:
 
 ```bash
-sudo python3 mininet/topology.py
-xterm server client1 client2 client3 client4
+server pkill -f python3
 ```
 
-Luego, en la terminal del servidor: `python3 src/start_server.py -H 10.0.0.5 -p 12000 -s cloud`. En alguna otra, subimos `OG.jpg` como `AlreadyUploaded.jpg` haciendo `python3 src/upload.py -H 10.0.0.5 -p 12000 -s OG.jpg -n AlreadyUploaded.jpg -r go-back-n`. Con esto, ya tenemos todo preparado.
+To clean up stale Mininet topologies and free up open ports:
 
-Finalmente, ejecutamos cada uno de estos comandos en cada una de las terminales creadas (podes pasar por cada una pegando los comandos y luego volver a pasar por cada una ejecutándolos apretando `Enter`):
-
-1. `time python3 src/upload.py -H 10.0.0.5 -p 12000 -s OG.jpg -n UploadedWithSAW.jpg -r stop-and-wait`
-1. `time python3 src/upload.py -H 10.0.0.5 -p 12000 -s OG.jpg -n UploadedWithGBN.jpg -r go-back-n`
-1. `time python3 src/download.py -H 10.0.0.5 -p 12000 -n AlreadyUploaded.jpg -d DownloadedWithSAW -r stop-and-wait`
-1. `time python3 src/download.py -H 10.0.0.5 -p 12000 -n AlreadyUploaded.jpg -d DownloadedWithGBN -r go-back-n`
-
-## 📈 Análisis
-
-En cuanto a **análisis**, tenemos:
-
-- Si indicamos **`time`** entre el _host_ y el programa, nos mostraría durante cuánto tiempo se ejecutó el comando. Por ejemplo, si usamos `client time python3 src/upload.py -H 10.0.0.5 -p 12000 -s OG.jpg -n Uploaded.jpg -r stop-and-wait`, obtendríamos cuánto tardó en subirse el archivo.
-- Con `client ping -c 1000 -i 0.01 10.0.0.5` obtenemos un **análisis de pérdida de paquetes**.
-- Con `server ps aux | grep python3` vemos los procesos Python corriendo.
-
-## 👋🏼 Cierre
-
-Para cerrar el servidor, una posibilidad es: `server pkill -f python3`.
+```Bash
+sudo mn -c
+```
