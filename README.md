@@ -1,24 +1,131 @@
-# 📥 TP1 _File Transfer_
+# Reliable File Transfer Application over UDP (`custom-file-transfer-protocol`)
 
-## 👋🏼 Preparación
+A client-server application built in Python that implements custom reliable data transfer protocols (**Stop-and-Wait** 
+and **Go-Back-N**) over unreliable networks. Includes automated scripts for packet loss and latency performance 
+evaluation using **Mininet**.
 
-Levantamos la red con:
+---
+
+## 🚀 Key Features
+
+- **Custom Transport Protocols:** Implements **Stop-and-Wait (ARQ)** and **Go-Back-N (GBN)** window-based mechanisms 
+- over UDP.
+- **Concurrent File Sharing:** Client-server architecture supporting simultaneous file uploads and downloads across 
+- multiple concurrent clients.
+- **Integrity Verification:** Automated checksum validations using `MD5` hashes to verify data integrity post-transfer.
+- **Performance Analysis Tools:** Scripted execution measuring end-to-end latency, execution time, and throughput under 
+- simulated packet loss scenarios.
+
+---
+
+## 🛠️ Concepts Applied
+
+- **Reliable Data Transfer (RDT):** Sequence numbering, timeouts, cumulative ACKs, and retransmissions over UDP.
+- **Flow Control:** Sliding window mechanisms (Go-Back-N).
+- **Network Emulation:** Multi-host topologies and traffic simulation in Mininet.
+
+---
+
+## 💻 Tech Stack
+
+- **Language:** Python 3
+- **Network Virtualization:** Mininet, Open vSwitch (OVS)
+- **System Analysis:** `xterm`, `md5sum`, `time`, `ping`
+
+---
+
+## 🏃 Usage & Execution
+
+### 1. Launch Network Topology
 
 ```bash
 sudo python3 mininet/topology.py
 ```
 
-Indicando el nombre del archivo en `of` y la cantidad de MBs en `count`, podemos generar archivos de prueba con: `dd if=/dev/urandom of=OG.bin bs=1M count=5`. Luego, para chequear la integridad de los archivos enviados/recibidos, podemos ver el _checksum_ de cada uno con `md5sum`.
+### 2. Start the Server
 
-## 🧰 Uso
+Inside the Mininet environment (or via xterm server):
 
-### ℹ️ General
+```Bash
+python3 src/start_server.py -H 10.0.0.5 -p 12000 -s cloud
+```
 
-Ahí, nos encontraremos en la **CLI** de MiniNet. Desde acá, podremos ejecutar comandos en cada _host_: en cada línea de comandos, indicamos el _host_ y luego el programa a ejecutar. Por ejemplo…
+### 3. Upload & Download Files
 
-- Levantamos el servidor: `server python3 src/start_server.py -H 10.0.0.5 -p 12000 -s cloud &`. Dado que agregamos el `&` para que el servidor se ejecute en el _background_ y así poder ejecutar luego los clientes, para poder ver su _output_, podemos agregar `> server.log 2>&1` antes del `&`.
-- Subimos un archivo: `client1 python3 src/upload.py -H 10.0.0.5 -p 12000 -s OG.jpg -n Uploaded.jpg -r go-back-n`.
-- Descargar un archivo: `client1 python3 src/download.py -H 10.0.0.5 -p 12000 -n Uploaded.jpg -r go-back-n`.
+Upload using Go-Back-N:
+
+```Bash
+python3 src/upload.py -H 10.0.0.5 -p 12000 -s sample.jpg -n Uploaded.jpg -r go-back-n
+```
+
+Download using Stop-and-Wait:
+
+```Bash
+python3 src/download.py -H 10.0.0.5 -p 12000 -n Uploaded.jpg -d Downloaded.jpg -r stop-and-wait
+```
+
+---
+
+## 👥 Multi-Client Testing (Demo)
+
+You can spin up multiple terminal instances inside Mininet using `xterm` to test concurrent uploads and downloads over
+**Stop-and-Wait** and **Go-Back-N**:
+
+**Launch Mininet with xterm instances:**
+
+   ```bash
+   sudo python3 mininet/topology.py
+   xterm server client1 client2 client3 client4
+   ```
+   
+1. Start Server (in server xterm):
+
+```Bash
+python3 src/start_server.py -H 10.0.0.5 -p 12000 -s cloud
+```
+
+2. Simultaneous File Transfers (across client terminals):
+
+Client 1 (Upload SAW): 
+```bash
+python3 src/upload.py -H 10.0.0.5 -p 12000 -s file.jpg -n UploadedSAW.jpg -r stop-and-wait
+```
+
+Client 2 (Upload GBN): 
+```bash
+python3 src/upload.py -H 10.0.0.5 -p 12000 -s file.jpg -n UploadedGBN.jpg -r go-back-n
+```
+
+Client 3 (Download SAW): 
+```bash
+python3 src/download.py -H 10.0.0.5 -p 12000 -n Existing.jpg -d DownloadedSAW -r stop-and-wait
+```
+
+Client 4 (Download GBN): 
+```bash
+python3 src/download.py -H 10.0.0.5 -p 12000 -n Existing.jpg -d DownloadedGBN -r go-back-n
+```
+
+## 📈 Performance & Network Analysis
+Benchmarking Execution Time: Prepend time to measure end-to-end transfer latency across protocols.
+
+Packet Loss Simulation: Run ICMP ping sweeps to evaluate packet loss rates on specific links:
+
+```Bash
+client ping -c 1000 -i 0.01 10.0.0.5
+```
+
+Process Monitoring: Inspect running python instances on the server host:
+
+```Bash
+server ps aux | grep python3
+```
+
+
+
+
+
+
 
 ### 👥 Varios _hosts_
 
