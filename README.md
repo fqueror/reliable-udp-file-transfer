@@ -1,136 +1,91 @@
-# Reliable File Transfer Application over UDP (`custom-file-transfer-protocol`)
+# Reliable UDP File Transfer
 
-A client-server application built in Python that implements custom reliable data transfer protocols (**Stop-and-Wait** 
-and **Go-Back-N**) over unreliable networks. Includes automated scripts for packet loss and latency performance 
-evaluation using **Mininet**.
+Client-server file transfer over UDP in Python, with two reliable data transfer protocols implemented from scratch: **Stop-and-Wait** and **Go-Back-N**.
 
----
+Assignment for Computer Networks (TA048) at the Faculty of Engineering, University of Buenos Aires (FIUBA), first semester of 2026.
 
-## 🚀 Key Features
+## Features
 
-- **Custom Transport Protocols:** Implements **Stop-and-Wait (ARQ)** and **Go-Back-N (GBN)** window-based mechanisms 
-- over UDP.
-- **Concurrent File Sharing:** Client-server architecture supporting simultaneous file uploads and downloads across 
-- multiple concurrent clients.
-- **Integrity Verification:** Automated checksum validations using `MD5` hashes to verify data integrity post-transfer.
-- **Performance Analysis Tools:** Scripted execution measuring end-to-end latency, execution time, and throughput under 
-- simulated packet loss scenarios.
+- Upload and download files between a client and a server.
+- Stop-and-Wait or Go-Back-N (window size 10), selected per transfer.
+- Sequence numbers, cumulative ACKs, timeouts and retransmissions.
+- Connection setup with a three-way handshake and teardown with FIN/ACK.
+- Multithreaded server: each client is handled on its own thread and socket.
+- Mininet topology with 10% packet loss for testing.
 
----
+## Requirements
 
-## 🛠️ Concepts Applied
+- Python 3.9+ (standard library only)
+- [Mininet](https://mininet.org/), only to run the test topology
 
-- **Reliable Data Transfer (RDT):** Sequence numbering, timeouts, cumulative ACKs, and retransmissions over UDP.
-- **Flow Control:** Sliding window mechanisms (Go-Back-N).
-- **Network Emulation:** Multi-host topologies and traffic simulation in Mininet.
+## Usage
 
----
+Run the commands from the repository root.
 
-## 💻 Tech Stack
+```bash
+# Start the server
+python3 src/start_server.py -H 0.0.0.0 -p 12000 -s storage
 
-- **Language:** Python 3
-- **Network Virtualization:** Mininet, Open vSwitch (OVS)
-- **System Analysis:** `xterm`, `md5sum`, `time`, `ping`
+# Upload sample.jpg and store it on the server as photo.jpg
+python3 src/upload.py -H 127.0.0.1 -p 12000 -s sample.jpg -n photo.jpg -r go-back-n
 
----
+# Download photo.jpg into the downloads/ directory
+python3 src/download.py -H 127.0.0.1 -p 12000 -n photo.jpg -d downloads -r stop-and-wait
+```
 
-## 🏃 Usage & Execution
+| Option | Description |
+| --- | --- |
+| `-H`, `--host` | Server IP address |
+| `-p`, `--port` | Server port |
+| `-s`, `--src` | Upload: source file. Server: storage directory (default `storage`) |
+| `-n`, `--name` | File name on the server |
+| `-d`, `--dst` | Download: destination directory (default: current directory) |
+| `-r`, `--protocol` | `stop-and-wait` or `go-back-n` |
+| `-v`, `-q` | Verbose or quiet output |
 
-### 1. Launch Network Topology
+The client needs `-H`, `-p`, `-n` and `-r`.
+
+## Testing with Mininet
+
+`mininet/topology.py` creates one switch, a server and four clients. The server link drops 10% of packets, so both data segments and ACKs are lost.
 
 ```bash
 sudo python3 mininet/topology.py
+mininet> xterm server client1 client2
 ```
 
-### 2. Start the Server
+Then start the server on `10.0.0.5`, run transfers from the clients and compare the files with `md5sum`. Use `sudo mn -c` to clean up leftover topologies.
 
-Inside the Mininet environment (or via xterm server):
+## Results
 
-```Bash
-python3 src/start_server.py -H 10.0.0.5 -p 12000 -s cloud
+Transfer time for a 5 MB file, measured with `time`:
+
+| Protocol | Operation | 0% loss | 10% loss |
+| --- | --- | --- | --- |
+| Stop-and-Wait | Upload | 0.57 s | 47.7 s |
+| Stop-and-Wait | Download | 0.86 s | 49.1 s |
+| Go-Back-N | Upload | 0.34 s | 22.3 s |
+| Go-Back-N | Download | 0.39 s | 23.3 s |
+
+With 10% loss, Go-Back-N achieved about twice the throughput of Stop-and-Wait. The 10 MB and 15 MB tests gave the same ratio.
+
+## Design notes
+
+- Segments are Python objects serialized with `pickle`. The payload is capped at 1350 bytes so each datagram fits in a 1500-byte MTU without fragmentation.
+- The retransmission timeout is fixed at 50 ms. An adaptive RTT-based timeout was tested and performed worse in this environment.
+- Corrupted datagrams are discarded by the UDP checksum, so segments carry no checksum of their own.
+
+## Project structure
+
 ```
-
-### 3. Upload & Download Files
-
-Upload using Go-Back-N:
-
-```Bash
-python3 src/upload.py -H 10.0.0.5 -p 12000 -s sample.jpg -n Uploaded.jpg -r go-back-n
-```
-
-Download using Stop-and-Wait:
-
-```Bash
-python3 src/download.py -H 10.0.0.5 -p 12000 -n Uploaded.jpg -d Downloaded.jpg -r stop-and-wait
-```
-
----
-
-## 👥 Multi-Client Testing (Demo)
-
-You can spin up multiple terminal instances inside Mininet using `xterm` to test concurrent uploads and downloads over
-**Stop-and-Wait** and **Go-Back-N**:
-
-**Launch Mininet with xterm instances:**
-
-   ```bash
-   sudo python3 mininet/topology.py
-   xterm server client1 client2 client3 client4
-   ```
-   
-1. Start Server (in server xterm):
-
-```Bash
-python3 src/start_server.py -H 10.0.0.5 -p 12000 -s cloud
-```
-
-2. Simultaneous File Transfers (across client terminals):
-
-Client 1 (Upload SAW): 
-```bash
-python3 src/upload.py -H 10.0.0.5 -p 12000 -s file.jpg -n UploadedSAW.jpg -r stop-and-wait
-```
-
-Client 2 (Upload GBN): 
-```bash
-python3 src/upload.py -H 10.0.0.5 -p 12000 -s file.jpg -n UploadedGBN.jpg -r go-back-n
-```
-
-Client 3 (Download SAW): 
-```bash
-python3 src/download.py -H 10.0.0.5 -p 12000 -n Existing.jpg -d DownloadedSAW -r stop-and-wait
-```
-
-Client 4 (Download GBN): 
-```bash
-python3 src/download.py -H 10.0.0.5 -p 12000 -n Existing.jpg -d DownloadedGBN -r go-back-n
-```
-
-## 📈 Performance & Network Analysis
-Benchmarking Execution Time: Prepend time to measure end-to-end transfer latency across protocols.
-
-Packet Loss Simulation: Run ICMP ping sweeps to evaluate packet loss rates on specific links:
-
-```Bash
-client ping -c 1000 -i 0.01 10.0.0.5
-```
-
-Process Monitoring: Inspect running python instances on the server host:
-
-```Bash
-server ps aux | grep python3
-```
-
-## 🧹 Environment Cleanup & Troubleshooting
-
-If the server hangs or you need to terminate all running Python instances across Mininet hosts, execute:
-
-```bash
-server pkill -f python3
-```
-
-To clean up stale Mininet topologies and free up open ports:
-
-```Bash
-sudo mn -c
+src/
+├── start_server.py, upload.py, download.py   # entry points
+└── lib/
+    ├── server.py                             # multithreaded server
+    ├── segment.py                            # segment format
+    └── protocol/
+        ├── protocol.py                       # handshake and teardown
+        ├── stop_and_wait.py
+        └── go_back_n.py
+mininet/topology.py                           # test topology
 ```
